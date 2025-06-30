@@ -7,6 +7,12 @@ pub enum CompileError {}
 pub enum RuntimeError {
     #[error("Missing value error")]
     MissingValue,
+
+    #[error("Operation {operation_type} is not supported for value of type {value_type}")]
+    OperationNotSupported {
+        value_type: String,
+        operation_type: String,
+    }
 }
 
 #[derive(Debug, Error)]
