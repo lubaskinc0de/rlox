@@ -1,30 +1,28 @@
-use std::{fmt::Display, rc::Rc, vec};
+use std::{fmt::Display, vec};
 
-use crate::value::Value;
+use crate::alias::StoredValue;
 
 pub enum OpCode {
-    OpReturn {
-        line: usize,
-    },
-    OpConst {
-        line: usize,
-        const_idx: usize,
-    },
+    OpReturn { line: usize },
+    OpConst { line: usize, const_idx: usize },
+    OpNegate { line: usize },
 }
 
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let repr = match self {
-            OpCode::OpReturn { line } => format!("OP_RETURN     L{}", line),
-            OpCode::OpConst { const_idx, line } => format!("OP_CONST {}     L{}", const_idx, line),
+        let (name, args, line) = match self {
+            OpCode::OpReturn { line } => ("OP_RETURN", "".to_string(), line),
+            OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{}", const_idx), line),
+            OpCode::OpNegate { line } => ("OP_NEGATE", "".to_string(), line),
         };
-        write!(f, "{}", repr)
+
+        write!(f, "{:<12} {:<6} L{}", name, args, line)
     }
 }
 
 pub struct Chunk {
     code: Vec<OpCode>,
-    constants: Vec<Rc<Value>>,
+    constants: Vec<StoredValue>,
 }
 
 impl Chunk {
@@ -39,9 +37,9 @@ impl Chunk {
         self.code.push(op_code);
     }
 
-    pub fn push_const(&mut self, value: Rc<Value>) -> usize {
+    pub fn push_const(&mut self, value: StoredValue) -> usize {
         self.constants.push(value);
-        self.constants.len() - 1  // index of const
+        self.constants.len() - 1 // index of const
     }
 
     pub fn is_empty(&self) -> bool {
@@ -49,11 +47,11 @@ impl Chunk {
     }
 
     pub fn get(&self, index: usize) -> Option<&OpCode> {
-        return self.code.get(index)
+        return self.code.get(index);
     }
 
-    pub fn get_const(&self, index: usize) -> Option<Rc<Value>> {
-        self.constants.get(index).cloned()  // Rc clone
+    pub fn get_const(&self, index: usize) -> Option<StoredValue> {
+        self.constants.get(index).cloned() // Rc clone
     }
 }
 
