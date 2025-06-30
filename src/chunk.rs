@@ -19,9 +19,9 @@ impl Display for OpCode {
             OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{}", const_idx), line),
             OpCode::OpNegate { line } => ("OP_NEGATE", "".to_string(), line),
             OpCode::OpAdd { line } => ("OP_ADD", "".to_string(), line),
-            OpCode::OpSub { line } => ("OP_ADD", "".to_string(), line),
-            OpCode::OpMul { line } => ("OP_ADD", "".to_string(), line),
-            OpCode::OpDiv { line } => ("OP_ADD", "".to_string(), line),
+            OpCode::OpSub { line } => ("OP_SUB", "".to_string(), line),
+            OpCode::OpMul { line } => ("OP_MUL", "".to_string(), line),
+            OpCode::OpDiv { line } => ("OP_DIV", "".to_string(), line),
         };
 
         write!(f, "{:<12} {:<6} L{}", name, args, line)
@@ -47,7 +47,7 @@ impl Chunk {
 
     pub fn push_const(&mut self, value: StoredValue) -> usize {
         self.constants.push(value);
-        self.constants.len() - 1 // index of pushed const
+        self.constants.len() - 1 // index of const
     }
 
     pub fn is_empty(&self) -> bool {
