@@ -116,7 +116,11 @@ impl Scanner {
     }
 
     fn make_token(&self, token_type: TokenType) -> Token {
-        return Token::new(token_type, self.line, self.start, self.length(), None);
+        return Token::new(token_type, self.line, self.start, self.length(), None, None);
+    }
+
+    fn make_literal_token(&self, token_type: TokenType, literal: String) -> Token {
+        return Token::new(token_type, self.line, self.start, self.length(), Some(literal), None);
     }
 
     fn make_error_token(&self, message: String) -> Token {
@@ -125,6 +129,7 @@ impl Scanner {
             self.line,
             self.start,
             self.length(),
+            None,
             Some(message),
         );
     }
@@ -240,7 +245,8 @@ impl Scanner {
             return self.make_error_token("Unclosed string literal".to_owned());
         }
         self.advance();
-        self.make_token(TokenType::STRING)
+        let literal = self.substr(self.start + 1, self.current - 1);
+        self.make_literal_token(TokenType::STRING, literal)
     }
 
     fn is_alpha(&self, c: char) -> bool {
@@ -258,14 +264,16 @@ impl Scanner {
                 self.advance();
             };
         }
-        self.make_token(TokenType::NUMBER)
+        let literal = self.substr(self.start, self.current);
+        self.make_literal_token(TokenType::NUMBER, literal)
     }
 
     fn identifier(&mut self) -> Token {
         while self.is_alpha(self.peek()) || self.is_digit(self.peek()) {
             self.advance();
         }
-        return self.make_token(self.identifier_type())
+        let literal = self.substr(self.start, self.current);
+        self.make_literal_token(self.identifier_type(), literal)
     }
 
     fn identifier_type(&self) -> TokenType {

@@ -1,14 +1,12 @@
 use anyhow::Error;
 
 use crate::{
-    chunk::Chunk, compiler::Compiler, errors::CompileError, parser::Parser, rc_refcell, scanner::Scanner, vm::VirtualMachine
+    chunk::Chunk, compiler::Compiler, errors::CompileError, rc_refcell, vm::VirtualMachine
 };
 
 pub fn interpret(source: String) -> Result<(), Error> {
     let chunk = rc_refcell!(Chunk::new());
-    let scanner = Scanner::new(source);
-    let parser = Parser::new();
-    let mut compiler = Compiler::new(parser, scanner);
+    let mut compiler = Compiler::from_source(source);
 
     if !compiler.compile(chunk.clone()) {
         return Err(CompileError {}.into());

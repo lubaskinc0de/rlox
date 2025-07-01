@@ -62,6 +62,7 @@ pub struct Token {
     pub line: usize,
     pub start: usize,
     pub length: usize,
+    pub literal: Option<String>,
     pub message: Option<String>,
 }
 
@@ -71,6 +72,7 @@ impl Token {
         line: usize,
         start: usize,
         length: usize,
+        literal: Option<String>,
         message: Option<String>,
     ) -> Self {
         match token_type {
@@ -91,6 +93,7 @@ impl Token {
             start,
             length,
             message,
+            literal,
         }
     }
 }

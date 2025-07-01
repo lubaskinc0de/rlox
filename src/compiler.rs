@@ -48,6 +48,16 @@ impl Compiler {
         }
     }
 
+    pub fn from_source(source: String) -> Self {
+        let scanner = Scanner::new(source);
+        let parser = Parser::new();
+        Self {
+            parser,
+            scanner,
+            current_chunk: None,
+        }
+    }
+
     pub fn compile(&mut self, chunk: StoredChunk) -> bool {
         self.current_chunk = Some(chunk.clone());
         self.parser.had_error.replace(false);
@@ -159,11 +169,15 @@ impl Compiler {
     }
 
     fn number(&self) {
-        let content = self.scanner.substr(
-            self.parser.previous.start,
-            self.parser.previous.start + self.parser.previous.length,
+        let value = Value::Float(
+            self.parser
+                .previous
+                .literal
+                .as_ref()
+                .unwrap()
+                .parse::<f64>()
+                .unwrap()
         );
-        let value = Value::Float(content.parse::<f64>().unwrap());
         self.emit_const(rc_refcell!(value));
     }
 
