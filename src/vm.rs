@@ -62,11 +62,11 @@ impl VirtualMachine {
             }
 
             match instruction {
-                OpCode::OpConst { line: _, const_idx } => {
+                OpCode::Const { line: _, const_idx } => {
                     let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
                     self.value_stack.borrow_mut().push(const_value);
                 }
-                OpCode::OpNegate { line: _ } => {
+                OpCode::Negate { line: _ } => {
                     let value = self.pop_or_err()?;
                     match &*value.borrow() {
                         Value::Float(float_value) => {
@@ -76,10 +76,10 @@ impl VirtualMachine {
                         }
                     }
                 }
-                OpCode::OpAdd { line: _ } => self.bin_op(BinOpKind::ADD)?,
-                OpCode::OpSub { line: _ } => self.bin_op(BinOpKind::SUB)?,
-                OpCode::OpMul { line: _ } => self.bin_op(BinOpKind::MUL)?,
-                OpCode::OpDiv { line: _ } => self.bin_op(BinOpKind::DIV)?,
+                OpCode::Add { line: _ } => self.bin_op(BinOpKind::ADD)?,
+                OpCode::Sub { line: _ } => self.bin_op(BinOpKind::SUB)?,
+                OpCode::Mul { line: _ } => self.bin_op(BinOpKind::MUL)?,
+                OpCode::Div { line: _ } => self.bin_op(BinOpKind::DIV)?,
             }
             self.ip += 1;
         }

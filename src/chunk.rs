@@ -3,23 +3,23 @@ use std::{fmt::Display, vec};
 use crate::alias::StoredValue;
 
 pub enum OpCode {
-    OpConst { line: usize, const_idx: usize },
-    OpNegate { line: usize },
-    OpAdd { line: usize },
-    OpSub { line: usize },
-    OpMul { line: usize },
-    OpDiv { line: usize },
+    Const { line: usize, const_idx: usize },
+    Negate { line: usize },
+    Add { line: usize },
+    Sub { line: usize },
+    Mul { line: usize },
+    Div { line: usize },
 }
 
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (name, args, line) = match self {
-            OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{const_idx}"), line),
-            OpCode::OpNegate { line } => ("OP_NEGATE", "".to_string(), line),
-            OpCode::OpAdd { line } => ("OP_ADD", "".to_string(), line),
-            OpCode::OpSub { line } => ("OP_SUB", "".to_string(), line),
-            OpCode::OpMul { line } => ("OP_MUL", "".to_string(), line),
-            OpCode::OpDiv { line } => ("OP_DIV", "".to_string(), line),
+            OpCode::Const { const_idx, line } => ("OP_CONST", format!("{const_idx}"), line),
+            OpCode::Negate { line } => ("OP_NEGATE", "".to_string(), line),
+            OpCode::Add { line } => ("OP_ADD", "".to_string(), line),
+            OpCode::Sub { line } => ("OP_SUB", "".to_string(), line),
+            OpCode::Mul { line } => ("OP_MUL", "".to_string(), line),
+            OpCode::Div { line } => ("OP_DIV", "".to_string(), line),
         };
 
         write!(f, "{name:<12} {args:<6} L{line}")

@@ -17,6 +17,7 @@ pub struct Compiler {
 }
 
 #[derive(Copy, Clone, FromRepr, Debug)]
+#[allow(clippy::upper_case_acronyms)]
 enum Precedence {
     NONE,
     Assignment,
@@ -376,7 +377,7 @@ impl Compiler {
     }
 
     fn emit_const(&self, value: StoredValue) {
-        self.emit_op_code(OpCode::OpConst {
+        self.emit_op_code(OpCode::Const {
             line: self.line(),
             const_idx: self.make_const(value),
         });
@@ -420,7 +421,9 @@ impl Compiler {
         let op_type = &self.parser.previous.token_type.clone();
         self.parse_precedence(Precedence::Unary);
 
-        if op_type == &TokenType::MINUS { self.emit_op_code(OpCode::OpNegate { line: self.line() }) }
+        if op_type == &TokenType::MINUS {
+            self.emit_op_code(OpCode::Negate { line: self.line() })
+        }
     }
 
     fn next_precedence(&self, variant: Precedence) -> Precedence {
@@ -430,7 +433,7 @@ impl Compiler {
 
     fn get_rule(&self, token_type: &TokenType) -> &ParseRule {
         let idx = *token_type as usize;
-        
+
         (RULES.get(idx).unwrap()) as _
     }
 
@@ -441,10 +444,10 @@ impl Compiler {
         self.parse_precedence(next_precedence);
 
         match op_type {
-            TokenType::PLUS => self.emit_op_code(OpCode::OpAdd { line: self.line() }),
-            TokenType::MINUS => self.emit_op_code(OpCode::OpSub { line: self.line() }),
-            TokenType::SLASH => self.emit_op_code(OpCode::OpDiv { line: self.line() }),
-            TokenType::STAR => self.emit_op_code(OpCode::OpMul { line: self.line() }),
+            TokenType::PLUS => self.emit_op_code(OpCode::Add { line: self.line() }),
+            TokenType::MINUS => self.emit_op_code(OpCode::Sub { line: self.line() }),
+            TokenType::SLASH => self.emit_op_code(OpCode::Div { line: self.line() }),
+            TokenType::STAR => self.emit_op_code(OpCode::Mul { line: self.line() }),
             _ => panic!("Unsupported binary token"),
         }
     }

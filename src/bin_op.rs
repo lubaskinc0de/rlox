@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[allow(clippy::upper_case_acronyms)]
 pub enum BinOpKind {
     ADD,
     SUB,
