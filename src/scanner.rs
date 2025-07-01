@@ -38,10 +38,6 @@ impl Scanner {
         }
     }
 
-    pub fn set_source(&mut self, source: String) {
-        self.source = source;
-    }
-
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
         self.start = self.current;
@@ -162,16 +158,6 @@ impl Scanner {
             return false;
         }
         self.advance();
-        return true;
-    }
-
-    fn match_prev(&mut self, expected: char) -> bool {
-        if self.current == 0 {
-            return false;
-        }
-        if self.char_at(self.current - 1) != expected {
-            return false;
-        }
         return true;
     }
 

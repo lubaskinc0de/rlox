@@ -62,7 +62,6 @@ impl VirtualMachine {
             }
 
             match instruction {
-                OpCode::OpReturn { line: _ } => println!("{:?}", self.stack_top()),
                 OpCode::OpConst { line: _, const_idx } => {
                     let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
                     self.value_stack.borrow_mut().push(const_value);

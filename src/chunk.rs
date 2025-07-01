@@ -3,7 +3,6 @@ use std::{fmt::Display, vec};
 use crate::alias::StoredValue;
 
 pub enum OpCode {
-    OpReturn { line: usize },
     OpConst { line: usize, const_idx: usize },
     OpNegate { line: usize },
     OpAdd { line: usize },
@@ -15,7 +14,6 @@ pub enum OpCode {
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (name, args, line) = match self {
-            OpCode::OpReturn { line } => ("OP_RETURN", "".to_string(), line),
             OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{}", const_idx), line),
             OpCode::OpNegate { line } => ("OP_NEGATE", "".to_string(), line),
             OpCode::OpAdd { line } => ("OP_ADD", "".to_string(), line),

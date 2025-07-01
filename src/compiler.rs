@@ -292,14 +292,6 @@ const RULES: [ParseRule; 41] = [
 ];
 
 impl Compiler {
-    pub fn new(parser: Parser, scanner: Scanner) -> Self {
-        Self {
-            parser,
-            scanner,
-            current_chunk: None,
-        }
-    }
-
     pub fn from_source(source: String) -> Self {
         let scanner = Scanner::new(source);
         let parser = Parser::new();
@@ -381,20 +373,6 @@ impl Compiler {
             .unwrap()
             .borrow_mut()
             .push(op_code);
-    }
-
-    fn emit_op_codes(&self, op_code_a: OpCode, op_code_b: OpCode) {
-        self.current_chunk
-            .as_ref()
-            .unwrap()
-            .borrow_mut()
-            .push(op_code_a);
-
-        self.current_chunk
-            .as_ref()
-            .unwrap()
-            .borrow_mut()
-            .push(op_code_b);
     }
 
     fn emit_const(&self, value: StoredValue) {
