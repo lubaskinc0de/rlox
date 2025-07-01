@@ -76,10 +76,10 @@ impl VirtualMachine {
                         }
                     }
                 }
-                OpCode::Add { line: _ } => self.bin_op(BinOpKind::ADD)?,
-                OpCode::Sub { line: _ } => self.bin_op(BinOpKind::SUB)?,
-                OpCode::Mul { line: _ } => self.bin_op(BinOpKind::MUL)?,
-                OpCode::Div { line: _ } => self.bin_op(BinOpKind::DIV)?,
+                OpCode::Add { line: _ } => self.bin_op(BinOpKind::Add)?,
+                OpCode::Sub { line: _ } => self.bin_op(BinOpKind::Sub)?,
+                OpCode::Mul { line: _ } => self.bin_op(BinOpKind::Mul)?,
+                OpCode::Div { line: _ } => self.bin_op(BinOpKind::Div)?,
             }
             self.ip += 1;
         }
