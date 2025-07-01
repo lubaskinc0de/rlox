@@ -43,34 +43,32 @@ fn read_file_to_string(file_name: &str) -> String {
     buf
 }
 
-fn repl() -> () {
+fn repl(debug: bool) -> () {
     loop {
         print!("> ");
         let mut prompt = String::new();
         io::stdin()
             .read_line(&mut prompt)
             .expect("Failed to read input");
-        interpret(prompt).unwrap()
+        interpret(prompt, debug).unwrap()
     }
 }
 
-fn run_source(content: String) -> Result<(), Error> {
-    interpret(content)
+fn run_source(content: String, debug: bool) -> Result<(), Error> {
+    interpret(content, debug)
 }
 
 fn main() {
     let cli = CliArgs::parse();
     let file_name = cli.file_name;
+    let debug = true;
 
     match (cli.repl, file_name) {
-        (true, Some(_)) => panic!(
-            "You must choose either to run in REPL mode or to pass the file name, but not both."
-        ),
-        (true, None) => repl(),
+        (true, None) => repl(debug),
         (false, None) => panic!("Pass the file name or run in REPL mode"),
-        (false, Some(filename)) => {
+        (false, Some(filename)) | (true, Some(filename)) => {
             let content = read_file_to_string(&filename);
-            run_source(content).unwrap()
+            run_source(content, debug).unwrap()
         }
     }
 }

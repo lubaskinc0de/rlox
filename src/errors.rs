@@ -13,7 +13,7 @@ pub enum RuntimeError {
     OperationNotSupported {
         value_type: String,
         operation_type: String,
-    }
+    },
 }
 
 #[derive(Debug, Error)]

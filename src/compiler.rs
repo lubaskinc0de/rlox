@@ -1,5 +1,3 @@
-use strum_macros::FromRepr;
-
 use crate::{
     alias::{StoredChunk, StoredValue},
     chunk::OpCode,
@@ -10,15 +8,17 @@ use crate::{
     value::Value,
 };
 
+use strum_macros::FromRepr;
+
 pub struct Compiler {
     parser: Parser,
     scanner: Scanner,
     current_chunk: Option<StoredChunk>,
 }
 
-#[derive(Clone, Copy, FromRepr)]
+#[derive(Copy, Clone, FromRepr, Debug)]
 enum Precedence {
-    None,
+    NONE,
     Assignment,
     Or,
     And,
@@ -31,13 +31,265 @@ enum Precedence {
     Primary,
 }
 
-type ParseFn = Box<dyn FnOnce() -> ()>;
+type ParseFn = fn(&mut Compiler);
 
+#[derive(Debug)]
 struct ParseRule {
+    prefix: Option<ParseFn>,
+    infix: Option<ParseFn>,
     precedence: Precedence,
-    prefix: ParseFn,
-    infix: ParseFn,
 }
+
+use Precedence::*;
+
+const RULES: [ParseRule; 41] = [
+    /* TOKEN_LEFT_PAREN */
+    ParseRule {
+        prefix: Some(Compiler::grouping),
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_RIGHT_PAREN */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_LEFT_BRACE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_RIGHT_BRACE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_COMMA */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_DOT */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_MINUS */
+    ParseRule {
+        prefix: Some(Compiler::unary),
+        infix: Some(Compiler::binary),
+        precedence: Term,
+    },
+    /* TOKEN_PLUS */
+    ParseRule {
+        prefix: None,
+        infix: Some(Compiler::binary),
+        precedence: Term,
+    },
+    /* TOKEN_SEMICOLON */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_SLASH */
+    ParseRule {
+        prefix: None,
+        infix: Some(Compiler::binary),
+        precedence: Factor,
+    },
+    /* TOKEN_STAR */
+    ParseRule {
+        prefix: None,
+        infix: Some(Compiler::binary),
+        precedence: Factor,
+    },
+    /* TOKEN_BANG */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_BANG_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_EQUAL_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_GREATER */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_GREATER_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_LESS */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_LESS_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_SLASH_EQUAL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_IDENTIFIER */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_STRING */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_NUMBER */
+    ParseRule {
+        prefix: Some(Compiler::number),
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_AND */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_CLASS */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_ELSE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_FALSE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_FOR */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_FUN */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_IF */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_NIL */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_OR */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_PRINT */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_RETURN */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_SUPER */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_THIS */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_TRUE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_VAR */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_WHILE */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_ERROR */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+    /* TOKEN_EOF */
+    ParseRule {
+        prefix: None,
+        infix: None,
+        precedence: NONE,
+    },
+];
 
 impl Compiler {
     pub fn new(parser: Parser, scanner: Scanner) -> Self {
@@ -164,11 +416,11 @@ impl Compiler {
         self.parser.previous.line
     }
 
-    fn expression(&self) {
+    fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
     }
 
-    fn number(&self) {
+    fn number(&mut self) {
         let value = Value::Float(
             self.parser
                 .previous
@@ -176,7 +428,7 @@ impl Compiler {
                 .as_ref()
                 .unwrap()
                 .parse::<f64>()
-                .unwrap()
+                .unwrap(),
         );
         self.emit_const(rc_refcell!(value));
     }
@@ -187,7 +439,7 @@ impl Compiler {
     }
 
     fn unary(&mut self) {
-        let op_type = &self.parser.previous.token_type;
+        let op_type = &self.parser.previous.token_type.clone();
         self.parse_precedence(Precedence::Unary);
 
         match op_type {
@@ -201,10 +453,17 @@ impl Compiler {
         Precedence::from_repr(code).unwrap_or(Precedence::Assignment)
     }
 
+    fn get_rule(&self, token_type: &TokenType) -> &ParseRule {
+        let idx = *token_type as usize;
+        let rule = RULES.get(idx).unwrap();
+        rule
+    }
+
     fn binary(&mut self) {
-        let op_type = &self.parser.previous.token_type;
+        let op_type = &self.parser.previous.token_type.clone();
         let rule = self.get_rule(op_type);
-        self.parse_precedence(self.next_precedence(rule.precedence));
+        let next_precedence = self.next_precedence(rule.precedence);
+        self.parse_precedence(next_precedence);
 
         match op_type {
             TokenType::PLUS => self.emit_op_code(OpCode::OpAdd { line: self.line() }),
@@ -215,5 +474,23 @@ impl Compiler {
         }
     }
 
-    fn parse_precedence(&self, precedence: Precedence) {}
+    fn parse_precedence(&mut self, precedence: Precedence) {
+        self.advance();
+        let Some(prefix_rule) = self.get_rule(&self.parser.previous.token_type).prefix else {
+            self.error("Expected expression".to_owned());
+            return;
+        };
+
+        prefix_rule(self);
+
+        while (precedence as usize)
+            <= (self.get_rule(&self.parser.current.token_type).precedence as usize)
+        {
+            self.advance();
+            let Some(infix_rule) = self.get_rule(&self.parser.previous.token_type).infix else {
+                continue;
+            };
+            infix_rule(self);
+        }
+    }
 }

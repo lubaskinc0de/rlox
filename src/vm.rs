@@ -120,7 +120,9 @@ impl VirtualMachine {
         match (&*a.borrow(), &*b.borrow()) {
             (Value::Float(a_val), Value::Float(b_val)) => {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
-                self.value_stack.borrow_mut().push(rc_refcell!(Value::Float(calculated)));
+                self.value_stack
+                    .borrow_mut()
+                    .push(rc_refcell!(Value::Float(calculated)));
             }
         }
 

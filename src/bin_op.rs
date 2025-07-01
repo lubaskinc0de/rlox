@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-
-
 pub enum BinOpKind {
     ADD,
     SUB,

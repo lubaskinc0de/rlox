@@ -1,6 +1,5 @@
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum TokenType {
-    // Single-character tokens.
     LeftParen,
     RightParen,
     LeftBrace,
@@ -12,8 +11,6 @@ pub enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
-
-    // One or two character tokens.
     BANG,
     BangEqual,
     EQUAL,
@@ -22,19 +19,10 @@ pub enum TokenType {
     GreaterEqual,
     LESS,
     LessEqual,
-    Pow,
-    PlusEqual,
-    MinusEqual,
-    StarEqual,
     SlashEqual,
-    PowEqual,
-
-    // Literals.
     IDENTIFIER,
     STRING,
     NUMBER,
-
-    // Keywords.
     AND,
     CLASS,
     ELSE,
@@ -51,7 +39,6 @@ pub enum TokenType {
     TRUE,
     VAR,
     WHILE,
-
     EOF,
     Error,
 }
@@ -80,7 +67,7 @@ impl Token {
                 if message.is_none() {
                     panic!("Error token with empty message")
                 }
-            },
+            }
             _ => {
                 if message.is_some() {
                     panic!("Non-error token with message")

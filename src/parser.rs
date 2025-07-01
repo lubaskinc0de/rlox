@@ -11,7 +11,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn new() -> Self {
-        let eof = Token::new(TokenType::EOF, 1, 0, 0, None);
+        let eof = Token::new(TokenType::EOF, 1, 0, 0, None, None);
         Self {
             current: eof.clone(),
             previous: eof.clone(),

@@ -120,7 +120,14 @@ impl Scanner {
     }
 
     fn make_literal_token(&self, token_type: TokenType, literal: String) -> Token {
-        return Token::new(token_type, self.line, self.start, self.length(), Some(literal), None);
+        return Token::new(
+            token_type,
+            self.line,
+            self.start,
+            self.length(),
+            Some(literal),
+            None,
+        );
     }
 
     fn make_error_token(&self, message: String) -> Token {
@@ -250,19 +257,19 @@ impl Scanner {
     }
 
     fn is_alpha(&self, c: char) -> bool {
-        return c.is_alphabetic() || c == '_'
+        return c.is_alphabetic() || c == '_';
     }
 
     fn number(&mut self) -> Token {
         while self.is_digit(self.peek()) {
             self.advance();
-        };
+        }
 
         if self.peek() == '.' && self.is_digit(self.peek_next()) {
             self.advance();
             while self.is_digit(self.peek()) {
                 self.advance();
-            };
+            }
         }
         let literal = self.substr(self.start, self.current);
         self.make_literal_token(TokenType::NUMBER, literal)
@@ -279,7 +286,7 @@ impl Scanner {
     fn identifier_type(&self) -> TokenType {
         let identifier_value = self.substr(self.start, self.current);
         let Some(token_type) = self.keywords.get(&identifier_value) else {
-            return TokenType::IDENTIFIER
+            return TokenType::IDENTIFIER;
         };
         token_type.clone()
     }
