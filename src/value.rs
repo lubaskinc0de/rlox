@@ -4,7 +4,7 @@ use crate::bin_op::BinOpKind;
 
 #[derive(Debug)]
 pub enum Value {
-    Float(f32),
+    Float(f64),
 }
 
 impl Value {

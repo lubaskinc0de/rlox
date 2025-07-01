@@ -1,7 +1,8 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum CompileError {}
+#[error("Error compiling")]
+pub struct CompileError {}
 
 #[derive(Error, Debug)]
 pub enum RuntimeError {

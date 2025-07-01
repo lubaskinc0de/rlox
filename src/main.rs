@@ -1,17 +1,24 @@
-use std::{fs::File, io::{self, Read}};
+use std::{
+    fs::File,
+    io::{self, Read},
+};
 
-use crate::chunk::OpCode;
+use crate::{chunk::OpCode, scanner::Scanner};
 
 mod alias;
 mod bin_op;
 mod chunk;
+mod compiler;
 mod errors;
+mod interpret;
 mod macros;
-mod value;
-mod vm;
+mod parser;
 mod scanner;
 mod token;
+mod value;
+mod vm;
 
+use crate::interpret::interpret;
 use anyhow::Error;
 use clap::Parser as CliParser;
 
@@ -40,13 +47,15 @@ fn repl() -> () {
     loop {
         print!("> ");
         let mut prompt = String::new();
-        io::stdin().read_line(&mut prompt).expect("Failed to read input");
-        
+        io::stdin()
+            .read_line(&mut prompt)
+            .expect("Failed to read input");
+        interpret(prompt).unwrap()
     }
 }
 
 fn run_source(content: String) -> Result<(), Error> {
-    Ok(())
+    interpret(content)
 }
 
 fn main() {
@@ -54,14 +63,14 @@ fn main() {
     let file_name = cli.file_name;
 
     match (cli.repl, file_name) {
-        (true, Some(_)) => panic!("You must choose either to run in REPL mode or to pass the file name, but not both."),
-        (true, None) => {
-            repl()
-        },
+        (true, Some(_)) => panic!(
+            "You must choose either to run in REPL mode or to pass the file name, but not both."
+        ),
+        (true, None) => repl(),
         (false, None) => panic!("Pass the file name or run in REPL mode"),
         (false, Some(filename)) => {
             let content = read_file_to_string(&filename);
             run_source(content).unwrap()
-        },
+        }
     }
 }

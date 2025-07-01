@@ -1,17 +1,22 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use anyhow::Error;
 
-use crate::alias::StoredValue;
+use crate::alias::{StoredChunk, StoredValue};
 use crate::bin_op::BinOpKind;
+use crate::errors::EmptyChunkError;
 use crate::errors::RuntimeError;
 use crate::value::Value;
 use crate::{OpCode, rc_refcell};
-use crate::{chunk::Chunk, errors::EmptyChunkError};
+
+type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 
 pub struct VirtualMachine {
-    chunk: Chunk,
+    chunk: StoredChunk,
     ip: usize,
     debug_trace: bool,
-    value_stack: Vec<StoredValue>,
+    value_stack: ValueStack,
 }
 
 macro_rules! calc {
@@ -27,26 +32,27 @@ macro_rules! calc {
 }
 
 impl VirtualMachine {
-    pub fn new(chunk: Chunk, debug_trace: bool) -> Result<Self, Error> {
-        if chunk.is_empty() {
+    pub fn new(chunk: StoredChunk, debug_trace: bool) -> Result<Self, Error> {
+        if chunk.borrow().is_empty() {
             return Err(EmptyChunkError {}.into());
         }
         Ok(Self {
             chunk,
             ip: 0,
             debug_trace,
-            value_stack: vec![],
+            value_stack: rc_refcell!(vec![]),
         })
     }
 
     pub fn exec(&mut self) -> Result<(), Error> {
         if self.debug_trace {
             println!("Executing this chunk:");
-            println!("{}", self.chunk);
+            println!("{}", self.chunk.borrow());
             println!()
         }
         loop {
-            let Some(instruction) = self.chunk.get(self.ip) else {
+            let borrowed_chunk = self.chunk.borrow();
+            let Some(instruction) = borrowed_chunk.get(self.ip) else {
                 return Ok(());
             };
 
@@ -56,16 +62,17 @@ impl VirtualMachine {
             }
 
             match instruction {
-                OpCode::OpReturn { line: _ } => (),
+                OpCode::OpReturn { line: _ } => println!("{:?}", self.stack_top()),
                 OpCode::OpConst { line: _, const_idx } => {
-                    let const_value = self.chunk.get_const(*const_idx).unwrap();
-                    self.value_stack.push(const_value);
+                    let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
+                    self.value_stack.borrow_mut().push(const_value);
                 }
                 OpCode::OpNegate { line: _ } => {
                     let value = self.pop_or_err()?;
                     match &*value.borrow() {
                         Value::Float(float_value) => {
                             self.value_stack
+                                .borrow_mut()
                                 .push(rc_refcell!(Value::Float(-float_value)));
                         }
                     }
@@ -80,17 +87,17 @@ impl VirtualMachine {
     }
 
     pub fn stack_top(&self) -> Option<StoredValue> {
-        return self.value_stack.last().cloned();
+        return self.value_stack.borrow().last().cloned();
     }
 
-    fn pop_or_err(&mut self) -> Result<StoredValue, Error> {
-        let Some(value) = self.value_stack.pop() else {
+    fn pop_or_err(&self) -> Result<StoredValue, Error> {
+        let Some(value) = self.value_stack.borrow_mut().pop() else {
             return Err(RuntimeError::MissingValue.into());
         };
         Ok(value)
     }
 
-    fn bin_op(&mut self, kind: BinOpKind) -> Result<(), Error> {
+    fn bin_op(&self, kind: BinOpKind) -> Result<(), Error> {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
 
@@ -113,7 +120,7 @@ impl VirtualMachine {
         match (&*a.borrow(), &*b.borrow()) {
             (Value::Float(a_val), Value::Float(b_val)) => {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
-                self.value_stack.push(rc_refcell!(Value::Float(calculated)));
+                self.value_stack.borrow_mut().push(rc_refcell!(Value::Float(calculated)));
             }
         }
 

@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use crate::token::{Token, TokenType};
 
-pub struct Scanner<'a> {
-    source: &'a str,
+pub struct Scanner {
+    source: String,
     start: usize,
     current: usize,
     line: usize,
     keywords: HashMap<String, TokenType>,
 }
 
-impl<'a> Scanner<'a> {
-    pub fn new(source: &'a str) -> Self {
+impl Scanner {
+    pub fn new(source: String) -> Self {
         Self {
             source,
             start: 0,
@@ -36,6 +36,10 @@ impl<'a> Scanner<'a> {
                 (String::from("while"), TokenType::WHILE),
             ]),
         }
+    }
+
+    pub fn set_source(&mut self, source: String) {
+        self.source = source;
     }
 
     pub fn scan_token(&mut self) -> Token {
@@ -179,7 +183,7 @@ impl<'a> Scanner<'a> {
         self.current >= self.source.chars().count()
     }
 
-    fn substr(&self, start: usize, end: usize) -> String {
+    pub fn substr(&self, start: usize, end: usize) -> String {
         let collected: String = self.source.chars().skip(start).take(end - start).collect();
         collected
     }
