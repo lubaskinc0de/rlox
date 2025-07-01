@@ -57,7 +57,7 @@ impl VirtualMachine {
             };
 
             if self.debug_trace {
-                println!("{}", instruction);
+                println!("{instruction}");
                 println!("Current stack: {:?}", self.value_stack)
             }
 

@@ -355,7 +355,7 @@ impl Compiler {
                 self.scanner.substr(token.start, token.start + token.length)
             ),
         };
-        print!(": {}\n", message);
+        println!(": {message}");
         self.parser.had_error.replace(true);
     }
 
@@ -420,10 +420,7 @@ impl Compiler {
         let op_type = &self.parser.previous.token_type.clone();
         self.parse_precedence(Precedence::Unary);
 
-        match op_type {
-            TokenType::MINUS => self.emit_op_code(OpCode::OpNegate { line: self.line() }),
-            _ => return,
-        }
+        if op_type == &TokenType::MINUS { self.emit_op_code(OpCode::OpNegate { line: self.line() }) }
     }
 
     fn next_precedence(&self, variant: Precedence) -> Precedence {
@@ -433,8 +430,8 @@ impl Compiler {
 
     fn get_rule(&self, token_type: &TokenType) -> &ParseRule {
         let idx = *token_type as usize;
-        let rule = RULES.get(idx).unwrap();
-        rule
+        
+        (RULES.get(idx).unwrap()) as _
     }
 
     fn binary(&mut self) {

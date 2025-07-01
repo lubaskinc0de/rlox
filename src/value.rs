@@ -19,8 +19,8 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
-            Value::Float(value) => format!("<value {} of type float>", value),
+            Value::Float(value) => format!("<value {value} of type float>"),
         };
-        write!(f, "{}", repr)
+        write!(f, "{repr}")
     }
 }

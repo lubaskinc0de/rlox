@@ -112,29 +112,29 @@ impl Scanner {
     }
 
     fn make_token(&self, token_type: TokenType) -> Token {
-        return Token::new(token_type, self.line, self.start, self.length(), None, None);
+        Token::new(token_type, self.line, self.start, self.length(), None, None)
     }
 
     fn make_literal_token(&self, token_type: TokenType, literal: String) -> Token {
-        return Token::new(
+        Token::new(
             token_type,
             self.line,
             self.start,
             self.length(),
             Some(literal),
             None,
-        );
+        )
     }
 
     fn make_error_token(&self, message: String) -> Token {
-        return Token::new(
+        Token::new(
             TokenType::Error,
             self.line,
             self.start,
             self.length(),
             None,
             Some(message),
-        );
+        )
     }
 
     fn char_at(&self, index: usize) -> char {
@@ -158,7 +158,7 @@ impl Scanner {
             return false;
         }
         self.advance();
-        return true;
+        true
     }
 
     fn peek(&self) -> char {
@@ -187,11 +187,11 @@ impl Scanner {
     }
 
     fn is_digit(&self, c: char) -> bool {
-        return c.is_digit(10);
+        c.is_ascii_digit()
     }
 
     fn length(&self) -> usize {
-        return self.current - self.start;
+        self.current - self.start
     }
 
     fn skip_whitespace(&mut self) {
@@ -243,7 +243,7 @@ impl Scanner {
     }
 
     fn is_alpha(&self, c: char) -> bool {
-        return c.is_alphabetic() || c == '_';
+        c.is_alphabetic() || c == '_'
     }
 
     fn number(&mut self) -> Token {
@@ -274,6 +274,6 @@ impl Scanner {
         let Some(token_type) = self.keywords.get(&identifier_value) else {
             return TokenType::IDENTIFIER;
         };
-        token_type.clone()
+        *token_type
     }
 }

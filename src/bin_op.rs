@@ -15,6 +15,6 @@ impl Display for BinOpKind {
             BinOpKind::MUL => "*",
             BinOpKind::DIV => "/",
         };
-        write!(f, "{}", c)
+        write!(f, "{c}")
     }
 }

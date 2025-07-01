@@ -14,7 +14,7 @@ pub enum OpCode {
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (name, args, line) = match self {
-            OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{}", const_idx), line),
+            OpCode::OpConst { const_idx, line } => ("OP_CONST", format!("{const_idx}"), line),
             OpCode::OpNegate { line } => ("OP_NEGATE", "".to_string(), line),
             OpCode::OpAdd { line } => ("OP_ADD", "".to_string(), line),
             OpCode::OpSub { line } => ("OP_SUB", "".to_string(), line),
@@ -22,7 +22,7 @@ impl Display for OpCode {
             OpCode::OpDiv { line } => ("OP_DIV", "".to_string(), line),
         };
 
-        write!(f, "{:<12} {:<6} L{}", name, args, line)
+        write!(f, "{name:<12} {args:<6} L{line}")
     }
 }
 
@@ -39,7 +39,7 @@ impl Chunk {
         }
     }
 
-    pub fn push(&mut self, op_code: OpCode) -> () {
+    pub fn push(&mut self, op_code: OpCode) {
         self.code.push(op_code);
     }
 
@@ -53,7 +53,7 @@ impl Chunk {
     }
 
     pub fn get(&self, index: usize) -> Option<&OpCode> {
-        return self.code.get(index);
+        self.code.get(index)
     }
 
     pub fn get_const(&self, index: usize) -> Option<StoredValue> {
@@ -66,9 +66,9 @@ impl Display for Chunk {
         let mut iter = self.code.iter().peekable();
         let mut offset = 0;
         while let Some(op_code) = iter.next() {
-            write!(f, "{}   {}", offset, op_code)?;
+            write!(f, "{offset}   {op_code}")?;
             if iter.peek().is_some() {
-                write!(f, "\n")?;
+                writeln!(f)?;
                 offset += 1;
             }
         }
