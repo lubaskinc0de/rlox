@@ -313,8 +313,16 @@ impl Compiler {
         self.consume(TokenType::EOF, "Expected end of expression".to_owned())
     }
 
+    fn previous(&self) -> &Token {
+        &self.parser.previous
+    }
+
+    fn current(&self) -> &Token {
+        &self.parser.current
+    }
+
     fn advance(&mut self) -> VoidResult {
-        self.parser.previous = self.parser.current.clone();
+        self.parser.previous = self.current().clone();
 
         let new_token = self.scanner.scan_token();
 
@@ -325,20 +333,24 @@ impl Compiler {
 
         self.parser.current = new_token;
         if self.debug_mode {
-            println!("Called advance, current: {:?}, previous: {:?}", &self.parser.current.token_type, &self.parser.previous.token_type);
+            println!(
+                "Called advance, current: {:?}, previous: {:?}",
+                &self.current().token_type,
+                &self.previous().token_type
+            );
         }
-        match self.parser.current.token_type {
+        match self.current().token_type {
             TokenType::Error => self.error_at_current(message.unwrap()),
             _ => Ok(()),
         }
     }
 
     fn error_at_current(&self, message: String) -> VoidResult {
-        self.error_at(&self.parser.current, message)
+        self.error_at(self.current(), message)
     }
 
     fn error(&self, message: String) -> VoidResult {
-        self.error_at(&self.parser.previous, message)
+        self.error_at(self.previous(), message)
     }
 
     fn error_at(&self, token: &Token, message: String) -> VoidResult {
@@ -356,7 +368,7 @@ impl Compiler {
     }
 
     fn consume(&mut self, token_type: TokenType, message: String) -> VoidResult {
-        if self.parser.current.token_type == token_type {
+        if self.current().token_type == token_type {
             self.advance()
         } else {
             self.error_at_current(message)
@@ -365,7 +377,7 @@ impl Compiler {
 
     fn emit_op_code(&self, op_code: OpCode) {
         if self.debug_mode {
-            println!("Emitted opcode: {}", op_code)
+            println!("Emitted opcode: {op_code}")
         }
         self.current_chunk
             .as_ref()
@@ -390,7 +402,7 @@ impl Compiler {
     }
 
     fn line(&self) -> usize {
-        self.parser.previous.line
+        self.previous().line
     }
 
     fn expression(&mut self) -> VoidResult {
@@ -417,13 +429,14 @@ impl Compiler {
     }
 
     fn unary(&mut self) -> VoidResult {
-        let op_type = &self.parser.previous.token_type.clone();
+        let op_type = &self.previous().token_type.clone();
         self.parse_precedence(Precedence::Unary)?;
 
         if self.debug_mode {
             println!(
                 "Called unary for op {:?}; current token: {:?}",
-                op_type, self.parser.current.token_type
+                op_type,
+                self.current().token_type
             )
         }
 
@@ -445,12 +458,16 @@ impl Compiler {
     }
 
     fn binary(&mut self) -> VoidResult {
-        let op_type = &self.parser.previous.token_type.clone();
+        let op_type = &self.previous().token_type.clone();
         let rule = self.get_rule(op_type);
         let next_precedence = self.next_precedence(rule.precedence);
 
         if self.debug_mode {
-            println!("Called binary with op = {:?}, next precedence = {:?}", self.parser.previous.token_type, next_precedence)
+            println!(
+                "Called binary with op = {:?}, next precedence = {:?}",
+                self.previous().token_type,
+                next_precedence
+            )
         }
 
         self.parse_precedence(next_precedence)?;
@@ -480,17 +497,20 @@ impl Compiler {
         if self.debug_mode {
             println!(
                 "Called parse_precedence with precedence = {:?}, current = {:?}, previous = {:?}",
-                precedence, self.parser.current.token_type, self.parser.previous.token_type
+                precedence,
+                self.current().token_type,
+                self.previous().token_type
             )
         }
         self.advance()?;
-        let Some(prefix_rule) = self.get_rule(&self.parser.previous.token_type).prefix else {
+        let Some(prefix_rule) = self.get_rule(&self.previous().token_type).prefix else {
             return self.error("Expected expression".to_owned());
         };
         if self.debug_mode {
             println!(
                 "Prefix rule for {:?} is {:?}",
-                &self.parser.previous.token_type, prefix_rule
+                &self.previous().token_type,
+                prefix_rule
             )
         }
         prefix_rule(self)?;
@@ -499,13 +519,13 @@ impl Compiler {
             println!(
                 "Before infix loop, precedence = {}, current = {:?}, current precedence = {}",
                 precedence as usize,
-                self.parser.current.token_type,
-                self.get_rule(&self.parser.current.token_type).precedence as usize
+                self.current().token_type,
+                self.get_rule(&self.current().token_type).precedence as usize
             )
         }
 
         let _: () = while (precedence as usize)
-            <= (self.get_rule(&self.parser.current.token_type).precedence as usize)
+            <= (self.get_rule(&self.current().token_type).precedence as usize)
         {
             if self.debug_mode {
                 println!("Entered parse_precendce infix loop");
@@ -514,10 +534,11 @@ impl Compiler {
             if self.debug_mode {
                 println!(
                     "Retrieving infix rule, current = {:?}, previous = {:?}",
-                    self.parser.current.token_type, self.parser.previous.token_type
+                    self.current().token_type,
+                    self.previous().token_type
                 )
             }
-            let Some(infix_rule) = self.get_rule(&self.parser.previous.token_type).infix else {
+            let Some(infix_rule) = self.get_rule(&self.previous().token_type).infix else {
                 continue;
             };
             infix_rule(self)?;
