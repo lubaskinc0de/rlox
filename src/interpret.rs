@@ -6,7 +6,7 @@ use crate::{chunk::Chunk, compiler::Compiler, rc_refcell, vm::VirtualMachine};
 
 pub fn interpret(source: String, debug: bool) -> Result<(), Error> {
     let chunk = rc_refcell!(Chunk::new());
-    let mut compiler = Compiler::from_source(source);
+    let mut compiler = Compiler::from_source(source, debug);
 
     compiler.compile(Rc::clone(&chunk))?;
 

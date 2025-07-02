@@ -15,6 +15,7 @@ pub struct Compiler {
     parser: Parser,
     scanner: Scanner,
     current_chunk: Option<StoredChunk>,
+    debug_mode: bool,
 }
 
 #[derive(Copy, Clone, FromRepr, Debug)]
@@ -293,13 +294,14 @@ const RULES: [ParseRule; 41] = [
 ];
 
 impl Compiler {
-    pub fn from_source(source: String) -> Self {
+    pub fn from_source(source: String, debug_mode: bool) -> Self {
         let scanner = Scanner::new(source);
         let parser = Parser::new();
         Self {
             parser,
             scanner,
             current_chunk: None,
+            debug_mode,
         }
     }
 
@@ -322,6 +324,9 @@ impl Compiler {
         };
 
         self.parser.current = new_token;
+        if self.debug_mode {
+            println!("Called advance, current: {:?}, previous: {:?}", &self.parser.current.token_type, &self.parser.previous.token_type);
+        }
         match self.parser.current.token_type {
             TokenType::Error => self.error_at_current(message.unwrap()),
             _ => Ok(()),
@@ -359,6 +364,9 @@ impl Compiler {
     }
 
     fn emit_op_code(&self, op_code: OpCode) {
+        if self.debug_mode {
+            println!("Emitted opcode: {}", op_code)
+        }
         self.current_chunk
             .as_ref()
             .unwrap()
@@ -412,6 +420,13 @@ impl Compiler {
         let op_type = &self.parser.previous.token_type.clone();
         self.parse_precedence(Precedence::Unary)?;
 
+        if self.debug_mode {
+            println!(
+                "Called unary for op {:?}; current token: {:?}",
+                op_type, self.parser.current.token_type
+            )
+        }
+
         if op_type == &TokenType::MINUS {
             self.emit_op_code(OpCode::Negate { line: self.line() })
         }
@@ -433,6 +448,11 @@ impl Compiler {
         let op_type = &self.parser.previous.token_type.clone();
         let rule = self.get_rule(op_type);
         let next_precedence = self.next_precedence(rule.precedence);
+
+        if self.debug_mode {
+            println!("Called binary with op = {:?}, next precedence = {:?}", self.parser.previous.token_type, next_precedence)
+        }
+
         self.parse_precedence(next_precedence)?;
 
         match op_type {
@@ -457,17 +477,46 @@ impl Compiler {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> VoidResult {
+        if self.debug_mode {
+            println!(
+                "Called parse_precedence with precedence = {:?}, current = {:?}, previous = {:?}",
+                precedence, self.parser.current.token_type, self.parser.previous.token_type
+            )
+        }
         self.advance()?;
         let Some(prefix_rule) = self.get_rule(&self.parser.previous.token_type).prefix else {
             return self.error("Expected expression".to_owned());
         };
-
+        if self.debug_mode {
+            println!(
+                "Prefix rule for {:?} is {:?}",
+                &self.parser.previous.token_type, prefix_rule
+            )
+        }
         prefix_rule(self)?;
+
+        if self.debug_mode {
+            println!(
+                "Before infix loop, precedence = {}, current = {:?}, current precedence = {}",
+                precedence as usize,
+                self.parser.current.token_type,
+                self.get_rule(&self.parser.current.token_type).precedence as usize
+            )
+        }
 
         let _: () = while (precedence as usize)
             <= (self.get_rule(&self.parser.current.token_type).precedence as usize)
         {
+            if self.debug_mode {
+                println!("Entered parse_precendce infix loop");
+            }
             self.advance()?;
+            if self.debug_mode {
+                println!(
+                    "Retrieving infix rule, current = {:?}, previous = {:?}",
+                    self.parser.current.token_type, self.parser.previous.token_type
+                )
+            }
             let Some(infix_rule) = self.get_rule(&self.parser.previous.token_type).infix else {
                 continue;
             };
