@@ -1,10 +1,6 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-#[error("Error compiling")]
-pub struct CompileError {}
-
-#[derive(Error, Debug)]
 pub enum RuntimeError {
     #[error("Missing value error")]
     MissingValue,
@@ -19,3 +15,7 @@ pub enum RuntimeError {
 #[derive(Debug, Error)]
 #[error("Empty chunk error")]
 pub struct EmptyChunkError {}
+
+#[derive(Error, Debug)]
+#[error("Error while parsing")]
+pub struct ParsingError {}

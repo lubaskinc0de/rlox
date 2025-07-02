@@ -1,6 +1,7 @@
 use crate::{
-    alias::{StoredChunk, StoredValue},
+    alias::{StoredChunk, StoredValue, VoidResult},
     chunk::OpCode,
+    errors::ParsingError,
     parser::Parser,
     rc_refcell,
     scanner::Scanner,
@@ -32,7 +33,7 @@ enum Precedence {
     Primary,
 }
 
-type ParseFn = fn(&mut Compiler);
+type ParseFn = fn(&mut Compiler) -> VoidResult;
 
 #[derive(Debug)]
 struct ParseRule {
@@ -42,7 +43,6 @@ struct ParseRule {
 }
 
 use Precedence::*;
-
 const RULES: [ParseRule; 41] = [
     /* TOKEN_LEFT_PAREN */
     ParseRule {
@@ -303,50 +303,40 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&mut self, chunk: StoredChunk) -> bool {
+    pub fn compile(&mut self, chunk: StoredChunk) -> VoidResult {
         self.current_chunk = Some(chunk.clone());
-        self.parser.had_error.replace(false);
-        self.parser.panic_mode.replace(false);
 
-        self.advance();
-        self.expression();
-        self.consume(TokenType::EOF, "Expected end of expression".to_owned());
-        !self.parser.had_error.get() // is compiled succesfully
+        self.advance()?;
+        self.expression()?;
+        self.consume(TokenType::EOF, "Expected end of expression".to_owned())
     }
 
-    fn advance(&mut self) {
+    fn advance(&mut self) -> VoidResult {
         self.parser.previous = self.parser.current.clone();
 
-        loop {
-            let new_token = self.scanner.scan_token();
+        let new_token = self.scanner.scan_token();
 
-            let message: Option<String> = match new_token.token_type {
-                TokenType::Error => Some(new_token.message.clone().unwrap()),
-                _ => None,
-            };
+        let message: Option<String> = match new_token.token_type {
+            TokenType::Error => Some(new_token.message.clone().unwrap()),
+            _ => None,
+        };
 
-            self.parser.current = new_token;
-            match self.parser.current.token_type {
-                TokenType::Error => self.error_at_current(message.unwrap()),
-                _ => break,
-            }
+        self.parser.current = new_token;
+        match self.parser.current.token_type {
+            TokenType::Error => self.error_at_current(message.unwrap()),
+            _ => Ok(()),
         }
     }
 
-    fn error_at_current(&self, message: String) {
-        self.error_at(&self.parser.current, message);
+    fn error_at_current(&self, message: String) -> VoidResult {
+        self.error_at(&self.parser.current, message)
     }
 
-    fn error(&self, message: String) {
-        self.error_at(&self.parser.previous, message);
+    fn error(&self, message: String) -> VoidResult {
+        self.error_at(&self.parser.previous, message)
     }
 
-    fn error_at(&self, token: &Token, message: String) {
-        if self.parser.panic_mode.get() {
-            return;
-        }
-
-        self.parser.panic_mode.replace(true);
+    fn error_at(&self, token: &Token, message: String) -> VoidResult {
         print!("[line {}] Error", token.line);
         match token.token_type {
             TokenType::EOF => print!(" at end"),
@@ -357,14 +347,14 @@ impl Compiler {
             ),
         };
         println!(": {message}");
-        self.parser.had_error.replace(true);
+        Err(ParsingError {}.into())
     }
 
-    fn consume(&mut self, token_type: TokenType, message: String) {
+    fn consume(&mut self, token_type: TokenType, message: String) -> VoidResult {
         if self.parser.current.token_type == token_type {
-            self.advance();
+            self.advance()
         } else {
-            self.error_at_current(message);
+            self.error_at_current(message)
         }
     }
 
@@ -395,11 +385,11 @@ impl Compiler {
         self.parser.previous.line
     }
 
-    fn expression(&mut self) {
-        self.parse_precedence(Precedence::Assignment);
+    fn expression(&mut self) -> VoidResult {
+        self.parse_precedence(Precedence::Assignment)
     }
 
-    fn number(&mut self) {
+    fn number(&mut self) -> VoidResult {
         let value = Value::Float(
             self.parser
                 .previous
@@ -410,20 +400,22 @@ impl Compiler {
                 .unwrap(),
         );
         self.emit_const(rc_refcell!(value));
+        Ok(())
     }
 
-    fn grouping(&mut self) {
-        self.expression();
-        self.consume(TokenType::RightParen, "Expected ')'".to_owned());
+    fn grouping(&mut self) -> VoidResult {
+        self.expression()?;
+        self.consume(TokenType::RightParen, "Expected ')'".to_owned())
     }
 
-    fn unary(&mut self) {
+    fn unary(&mut self) -> VoidResult {
         let op_type = &self.parser.previous.token_type.clone();
-        self.parse_precedence(Precedence::Unary);
+        self.parse_precedence(Precedence::Unary)?;
 
         if op_type == &TokenType::MINUS {
             self.emit_op_code(OpCode::Negate { line: self.line() })
         }
+        Ok(())
     }
 
     fn next_precedence(&self, variant: Precedence) -> Precedence {
@@ -437,38 +429,50 @@ impl Compiler {
         (RULES.get(idx).unwrap()) as _
     }
 
-    fn binary(&mut self) {
+    fn binary(&mut self) -> VoidResult {
         let op_type = &self.parser.previous.token_type.clone();
         let rule = self.get_rule(op_type);
         let next_precedence = self.next_precedence(rule.precedence);
-        self.parse_precedence(next_precedence);
+        self.parse_precedence(next_precedence)?;
 
         match op_type {
-            TokenType::PLUS => self.emit_op_code(OpCode::Add { line: self.line() }),
-            TokenType::MINUS => self.emit_op_code(OpCode::Sub { line: self.line() }),
-            TokenType::SLASH => self.emit_op_code(OpCode::Div { line: self.line() }),
-            TokenType::STAR => self.emit_op_code(OpCode::Mul { line: self.line() }),
+            TokenType::PLUS => {
+                self.emit_op_code(OpCode::Add { line: self.line() });
+                Ok(())
+            }
+            TokenType::MINUS => {
+                self.emit_op_code(OpCode::Sub { line: self.line() });
+                Ok(())
+            }
+            TokenType::SLASH => {
+                self.emit_op_code(OpCode::Div { line: self.line() });
+                Ok(())
+            }
+            TokenType::STAR => {
+                self.emit_op_code(OpCode::Mul { line: self.line() });
+                Ok(())
+            }
             _ => panic!("Unsupported binary token"),
         }
     }
 
-    fn parse_precedence(&mut self, precedence: Precedence) {
-        self.advance();
+    fn parse_precedence(&mut self, precedence: Precedence) -> VoidResult {
+        self.advance()?;
         let Some(prefix_rule) = self.get_rule(&self.parser.previous.token_type).prefix else {
-            self.error("Expected expression".to_owned());
-            return;
+            return self.error("Expected expression".to_owned());
         };
 
-        prefix_rule(self);
+        prefix_rule(self)?;
 
-        while (precedence as usize)
+        let _: () = while (precedence as usize)
             <= (self.get_rule(&self.parser.current.token_type).precedence as usize)
         {
-            self.advance();
+            self.advance()?;
             let Some(infix_rule) = self.get_rule(&self.parser.previous.token_type).infix else {
                 continue;
             };
-            infix_rule(self);
-        }
+            infix_rule(self)?;
+        };
+        Ok(())
     }
 }
