@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq, Copy)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum TokenType {
@@ -82,6 +84,15 @@ impl Token {
             length,
             message,
             literal,
+        }
+    }
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.literal {
+            None => write!(f, "{:?}", self.token_type),
+            Some(lit) => write!(f, "{:?}({})", self.token_type, lit),
         }
     }
 }

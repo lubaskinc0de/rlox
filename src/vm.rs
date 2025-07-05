@@ -58,12 +58,14 @@ impl VirtualMachine {
 
             if self.debug_trace {
                 println!("{instruction}");
-                println!("Current stack: {:?}", self.value_stack)
             }
 
             match instruction {
                 OpCode::Const { line: _, const_idx } => {
                     let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
+                    if self.debug_trace {
+                        println!("Pushed const: {}", const_value.borrow());
+                    }
                     self.value_stack.borrow_mut().push(const_value);
                 }
                 OpCode::Negate { line: _ } => {

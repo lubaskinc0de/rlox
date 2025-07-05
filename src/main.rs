@@ -22,6 +22,8 @@ use crate::interpret::interpret;
 use anyhow::Error;
 use clap::Parser as CliParser;
 
+const VERSION: &str = "0.0.1";
+
 #[derive(CliParser, Debug)]
 #[command(
     version,
@@ -44,8 +46,10 @@ fn read_file_to_string(file_name: &str) -> String {
 }
 
 fn repl(debug: bool) -> () {
+    println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
+    println!("Enter program code:");
     loop {
-        print!("> ");
+        eprint!("> ");
         let mut prompt = String::new();
         io::stdin()
             .read_line(&mut prompt)
