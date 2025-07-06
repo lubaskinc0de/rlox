@@ -2,6 +2,8 @@ use std::{fmt::Display, vec};
 
 use crate::alias::StoredValue;
 
+const STACK_CAPACITY: usize = 256;
+
 pub enum OpCode {
     Const { line: usize, const_idx: usize },
     Negate { line: usize },
@@ -26,6 +28,19 @@ impl Display for OpCode {
     }
 }
 
+impl OpCode {
+    pub fn line(&self) -> usize {
+        match self {
+            OpCode::Const { line, .. } => *line,
+            OpCode::Negate { line } => *line,
+            OpCode::Add { line } => *line,
+            OpCode::Sub { line } => *line,
+            OpCode::Mul { line } => *line,
+            OpCode::Div { line } => *line,
+        }
+    }
+}
+
 pub struct Chunk {
     code: Vec<OpCode>,
     constants: Vec<StoredValue>,
@@ -35,7 +50,7 @@ impl Chunk {
     pub fn new() -> Self {
         Self {
             code: vec![],
-            constants: vec![],
+            constants: Vec::with_capacity(STACK_CAPACITY),
         }
     }
 

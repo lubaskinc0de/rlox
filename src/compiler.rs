@@ -1,12 +1,5 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult},
-    chunk::OpCode,
-    errors::ParsingError,
-    parser::Parser,
-    rc_refcell,
-    scanner::Scanner,
-    token::{Token, TokenType},
-    value::Value,
+    alias::{StoredChunk, StoredValue, VoidResult}, chunk::OpCode, errors::ParsingError, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
 };
 
 use strum_macros::FromRepr;
@@ -227,7 +220,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_NIL */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::null),
         infix: None,
         precedence: NONE,
     },
@@ -431,6 +424,15 @@ impl Compiler {
         );
         if self.debug_mode {
             println!("Called number() for {}", value);
+        }
+        self.emit_const(rc_refcell!(value));
+        Ok(())
+    }
+
+    fn null(&mut self) -> VoidResult {
+        let value = Value::Null;
+        if self.debug_mode {
+            println!("Called null()");
         }
         self.emit_const(rc_refcell!(value));
         Ok(())

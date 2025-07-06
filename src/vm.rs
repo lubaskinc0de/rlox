@@ -5,8 +5,8 @@ use anyhow::Error;
 
 use crate::alias::{StoredChunk, StoredValue};
 use crate::bin_op::BinOpKind;
-use crate::errors::EmptyChunkError;
-use crate::errors::RuntimeError;
+use crate::errors::RuntimeErrorKind;
+use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::value::Value;
 use crate::{OpCode, rc_refcell};
 
@@ -69,6 +69,14 @@ impl VirtualMachine {
                     self.value_stack.borrow_mut().push(const_value);
                 }
                 OpCode::Negate { line: _ } => {
+                    let peek = self.peek()?;
+                    if !peek.borrow().support_negation() {
+                        return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                            op: "-".to_owned(),
+                            value: format!("for {}", peek.borrow()),
+                        }));
+                    }
+
                     let value = self.pop_or_err()?;
                     match &*value.borrow() {
                         Value::Float(float_value) => {
@@ -76,6 +84,7 @@ impl VirtualMachine {
                                 .borrow_mut()
                                 .push(rc_refcell!(Value::Float(-float_value)));
                         }
+                        _ => unreachable!(),
                     }
                 }
                 OpCode::Add { line: _ } => self.bin_op(BinOpKind::Add)?,
@@ -91,9 +100,29 @@ impl VirtualMachine {
         return self.value_stack.borrow().last().cloned();
     }
 
+    fn runtime_error(&self, kind: RuntimeErrorKind) -> Error {
+        let borrowed_chunk = self.chunk.borrow();
+        let Some(prev_instruction) = borrowed_chunk.get(self.ip - 1) else {
+            panic!("Cannot get previous instruction");
+        };
+
+        RuntimeError {
+            kind,
+            line: prev_instruction.line(),
+        }
+        .into()
+    }
+
+    fn peek(&self) -> Result<StoredValue, Error> {
+        let Some(value) = self.value_stack.borrow().last().cloned() else {
+            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+        };
+        Ok(value)
+    }
+
     fn pop_or_err(&self) -> Result<StoredValue, Error> {
         let Some(value) = self.value_stack.borrow_mut().pop() else {
-            return Err(RuntimeError::MissingValue.into());
+            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
         };
         Ok(value)
     }
@@ -103,19 +132,17 @@ impl VirtualMachine {
         let a = self.pop_or_err()?;
 
         if !a.borrow().is_supported_binop(&kind) {
-            return Err(RuntimeError::OperationNotSupported {
-                value_type: a.borrow().to_string(),
-                operation_type: kind.to_string(),
-            }
-            .into());
+            return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                value: format!("for {}", a.borrow().type_name()),
+                op: kind.to_string(),
+            }));
         }
 
         if !b.borrow().is_supported_binop(&kind) {
-            return Err(RuntimeError::OperationNotSupported {
-                value_type: b.borrow().to_string(),
-                operation_type: kind.to_string(),
-            }
-            .into());
+            return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                value: format!("for {}", b.borrow().to_string()),
+                op: kind.to_string(),
+            }));
         }
 
         match (&*a.borrow(), &*b.borrow()) {
@@ -124,6 +151,12 @@ impl VirtualMachine {
                 self.value_stack
                     .borrow_mut()
                     .push(rc_refcell!(Value::Float(calculated)));
+            }
+            (val1, val2) => {
+                return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                    op: "-".to_owned(),
+                    value: format!("between {} and {}", val1.type_name(), val2.type_name()),
+                }));
             }
         }
 

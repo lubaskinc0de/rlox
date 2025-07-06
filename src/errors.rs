@@ -1,15 +1,12 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum RuntimeError {
-    #[error("Missing value error")]
+pub enum RuntimeErrorKind {
+    #[error("Missing stack value")]
     MissingValue,
 
-    #[error("Operation {operation_type} is not supported for value of type {value_type}")]
-    OperationNotSupported {
-        value_type: String,
-        operation_type: String,
-    },
+    #[error("Operation {op} is not supported {value}")]
+    OperationNotSupported { value: String, op: String },
 }
 
 #[derive(Debug, Error)]
@@ -19,3 +16,11 @@ pub struct EmptyChunkError {}
 #[derive(Error, Debug)]
 #[error("Error while parsing")]
 pub struct ParsingError {}
+
+
+#[derive(Debug, Error)]
+#[error("[line {line}] Runtime error:\n{kind}")]
+pub struct RuntimeError {
+    pub kind: RuntimeErrorKind,
+    pub line: usize,
+}

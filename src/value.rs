@@ -5,6 +5,8 @@ use crate::bin_op::BinOpKind;
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
+    Boolean(bool),
+    Null,
 }
 
 impl Value {
@@ -12,6 +14,23 @@ impl Value {
     pub fn is_supported_binop(&self, kind: &BinOpKind) -> bool {
         match self {
             Value::Float(_) => true,
+            Value::Boolean(_) => false,
+            Value::Null => false,
+        }
+    }
+
+    pub fn type_name(&self) -> String {
+        match self {
+            Value::Float(_) => "float".to_owned(),
+            Value::Boolean(_) => "boolean".to_owned(),
+            Value::Null => "null".to_owned(),
+        }
+    }
+
+    pub fn support_negation(&self) -> bool {
+        match self {
+            Value::Float(_) => true,
+            _ => false,
         }
     }
 }
@@ -19,7 +38,9 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
-            Value::Float(value) => format!("<value {value} of type float>"),
+            Value::Float(value) => format!("<value {value} of type {}>", self.type_name()),
+            Value::Boolean(value) => format!("<value {value} of type {}>", self.type_name()),
+            Value::Null => "null".to_owned(),
         };
         write!(f, "{repr}")
     }

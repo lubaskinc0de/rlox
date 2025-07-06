@@ -1,3 +1,4 @@
+#![feature(breakpoint)]
 use std::{
     fs::File,
     io::{self, Read},
@@ -45,7 +46,7 @@ fn read_file_to_string(file_name: &str) -> String {
     buf
 }
 
-fn repl(debug: bool) -> () {
+fn repl(debug: bool) -> Result<(), Error> {
     println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
     println!("Enter program code:");
     loop {
@@ -54,7 +55,7 @@ fn repl(debug: bool) -> () {
         io::stdin()
             .read_line(&mut prompt)
             .expect("Failed to read input");
-        interpret(prompt, debug).unwrap()
+        interpret(prompt, debug)?;
     }
 }
 
@@ -67,12 +68,17 @@ fn main() {
     let file_name = cli.file_name;
     let debug = true;
 
-    match (cli.repl, file_name) {
+    let result = match (cli.repl, file_name) {
         (true, None) => repl(debug),
         (false, None) => panic!("Pass the file name or run in REPL mode"),
         (false, Some(filename)) | (true, Some(filename)) => {
             let content = read_file_to_string(&filename);
-            run_source(content, debug).unwrap()
+            run_source(content, debug)
         }
+    };
+
+    match result {
+        Ok(()) => return,
+        Err(err) => println!("{err}"),
     }
 }
