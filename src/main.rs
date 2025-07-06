@@ -1,4 +1,4 @@
-#![feature(breakpoint)]
+#![feature(associated_type_defaults)]
 use std::{
     fs::File,
     io::{self, Read},
@@ -16,6 +16,8 @@ mod scanner;
 mod token;
 mod value;
 mod vm;
+mod object;
+mod string;
 
 use crate::interpret::interpret;
 use anyhow::Error;

@@ -5,6 +5,7 @@ pub struct Parser {
     pub previous: Option<Token>,
 }
 
+/// Actual parsing logic in ``Compiler`` according to the book
 impl Parser {
     pub fn new() -> Self {
         Self {

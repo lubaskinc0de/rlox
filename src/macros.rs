@@ -1,3 +1,4 @@
+/// Wraps anything into ``Rc::new(RefCell::new())``
 #[macro_export]
 macro_rules! rc_refcell {
     ($value:expr) => {

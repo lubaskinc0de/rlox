@@ -1,10 +1,13 @@
 use std::fmt::Display;
 
+use crate::object::Object;
+
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
     Boolean(bool),
     Null,
+    Object(Box<dyn Object>),
 }
 
 #[derive(PartialEq)]
@@ -21,6 +24,7 @@ impl Value {
             Value::Float(_) => "float".to_owned(),
             Value::Boolean(_) => "boolean".to_owned(),
             Value::Null => "null".to_owned(),
+            Value::Object(obj) => obj.type_name(),
         }
     }
 
@@ -54,6 +58,13 @@ impl Value {
             _ => Compare::NotEqual,
         }
     }
+
+    pub fn object(&self) -> Option<&Box<dyn Object>> {
+        match self {
+            Value::Object(obj) => Some(obj),
+            _ => None,
+        }
+    }
 }
 
 impl Display for Value {
@@ -62,7 +73,19 @@ impl Display for Value {
             Value::Float(value) => format!("<value {value} of type {}>", self.type_name()),
             Value::Boolean(value) => format!("<value {value} of type {}>", self.type_name()),
             Value::Null => "null".to_owned(),
+            Value::Object(obj) => format!("<object {obj} of type {}>", self.type_name()),
         };
         write!(f, "{repr}")
+    }
+}
+
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        match self {
+            Value::Float(val) => Value::Float(val.clone()),
+            Value::Boolean(val) => Value::Boolean(val.clone()),
+            Value::Null => Value::Null,
+            Value::Object(object) => Value::Object(object.copy()),
+        }
     }
 }
