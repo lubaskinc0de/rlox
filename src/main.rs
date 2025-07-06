@@ -35,6 +35,8 @@ struct CliArgs {
     #[arg(short, long, default_value_t = true)]
     repl: bool,
     file_name: Option<String>,
+    #[arg(short, long, default_value_t = false)]
+    debug: bool,
 }
 
 fn read_file_to_string(file_name: &str) -> String {
@@ -66,7 +68,7 @@ fn run_source(content: String, debug: bool) -> Result<(), Error> {
 fn main() {
     let cli = CliArgs::parse();
     let file_name = cli.file_name;
-    let debug = true;
+    let debug = cli.debug;
 
     let result = match (cli.repl, file_name) {
         (true, None) => repl(debug),

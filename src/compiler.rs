@@ -524,7 +524,7 @@ impl Compiler {
             .get_rule(&self.current().unwrap().token_type)
             .precedence as usize;
 
-        if !(precedence as usize <= current_token_precedence) {
+        if !(precedence as usize <= current_token_precedence) && self.debug_mode {
             println!(
                 "Skipping infix rule loop, {}, precedence: {:?}({}), current precedence: {:?}({})",
                 self.debug_string(),

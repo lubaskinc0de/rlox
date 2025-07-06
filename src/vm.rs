@@ -131,20 +131,6 @@ impl VirtualMachine {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
 
-        if !a.borrow().is_supported_binop(&kind) {
-            return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
-                value: format!("for {}", a.borrow().type_name()),
-                op: kind.to_string(),
-            }));
-        }
-
-        if !b.borrow().is_supported_binop(&kind) {
-            return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
-                value: format!("for {}", b.borrow().to_string()),
-                op: kind.to_string(),
-            }));
-        }
-
         match (&*a.borrow(), &*b.borrow()) {
             (Value::Float(a_val), Value::Float(b_val)) => {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
