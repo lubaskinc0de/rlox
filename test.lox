@@ -1,1 +1,1 @@
-"string" == "string2"
+"string" + 2

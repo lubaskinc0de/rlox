@@ -40,11 +40,12 @@ impl Object for StringObject {
     }
 
     fn cmp(&self, other: &Box<dyn AnyObject>) -> Compare {
+        println!("{:?}", other);
         if other.type_name() != self.type_name() {
             return Compare::NotEqual;
         }
-        let t = other as &dyn Any;
-        match t.downcast_ref::<StringObject>() {
+        let obj = other.as_ref() as &dyn Any;
+        match obj.downcast_ref::<StringObject>() {
             Some(as_string) => {
                 if as_string.value == self.value {
                     return Compare::Equal;
