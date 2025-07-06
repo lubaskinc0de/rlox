@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
@@ -18,17 +17,11 @@ impl Value {
     }
 
     pub fn support_negation(&self) -> bool {
-        match self {
-            Value::Float(_) => true,
-            _ => false,
-        }
+        matches!(self, Value::Float(_))
     }
 
     pub fn is_truthy(&self) -> bool {
-        match self {
-            Value::Boolean(false) | Value::Null => false,
-            _ => true,
-        }
+        !matches!(self, Value::Boolean(false) | Value::Null)
     }
 }
 

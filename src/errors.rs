@@ -17,7 +17,6 @@ pub struct EmptyChunkError {}
 #[error("Error while parsing")]
 pub struct ParsingError {}
 
-
 #[derive(Debug, Error)]
 #[error("[line {line}] Runtime error:\n{kind}")]
 pub struct RuntimeError {

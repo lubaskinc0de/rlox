@@ -4,7 +4,6 @@ use std::{
     io::{self, Read},
 };
 
-
 mod alias;
 mod bin_op;
 mod chunk;
@@ -79,7 +78,7 @@ fn main() {
     };
 
     match result {
-        Ok(()) => return,
+        Ok(()) => (),
         Err(err) => println!("{err}"),
     }
 }

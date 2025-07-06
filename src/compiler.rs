@@ -1,5 +1,12 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult}, chunk::{OpCode, OpCodeKind}, compiler, errors::ParsingError, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
+    alias::{StoredChunk, StoredValue, VoidResult},
+    chunk::{OpCode, OpCodeKind},
+    errors::ParsingError,
+    parser::Parser,
+    rc_refcell,
+    scanner::Scanner,
+    token::{Token, TokenType},
+    value::Value,
 };
 
 use strum_macros::FromRepr;
@@ -422,7 +429,7 @@ impl Compiler {
                 .unwrap(),
         );
         if self.debug_mode {
-            println!("Called number() for {}", value);
+            println!("Called number() for {value}");
         }
         self.emit_const(rc_refcell!(value));
         Ok(())
@@ -529,7 +536,7 @@ impl Compiler {
             .get_rule(&self.current().unwrap().token_type)
             .precedence as usize;
 
-        if !(precedence as usize <= current_token_precedence) && self.debug_mode {
+        if (precedence as usize > current_token_precedence) && self.debug_mode {
             println!(
                 "Skipping infix rule loop, {}, precedence: {:?}({}), current precedence: {:?}({})",
                 self.debug_string(),

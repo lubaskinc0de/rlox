@@ -32,7 +32,7 @@ impl Display for OpCodeKind {
             OpCodeKind::Not => ("OP_NOT", "".to_string()),
         };
 
-        write!(f, "{name:<12} {args:<6}")    
+        write!(f, "{name:<12} {args:<6}")
     }
 }
 
