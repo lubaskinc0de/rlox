@@ -203,7 +203,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_FALSE */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::literal),
         infix: None,
         precedence: NONE,
     },
@@ -227,7 +227,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_NIL */
     ParseRule {
-        prefix: Some(Compiler::null),
+        prefix: Some(Compiler::literal),
         infix: None,
         precedence: NONE,
     },
@@ -263,7 +263,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_TRUE */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::literal),
         infix: None,
         precedence: NONE,
     },
@@ -435,11 +435,16 @@ impl Compiler {
         Ok(())
     }
 
-    fn null(&mut self) -> VoidResult {
+    fn literal(&mut self) -> VoidResult {
         if self.debug_mode {
-            println!("Called null()");
+            println!("Called literal()");
         }
-        self.emit_op_code(OpCodeKind::Null);
+        self.emit_op_code(match self.previous().unwrap().token_type {
+            TokenType::NIL => OpCodeKind::Null,
+            TokenType::FALSE => OpCodeKind::False,
+            TokenType::TRUE => OpCodeKind::True,
+            _ => unreachable!(),
+        });
         Ok(())
     }
 
