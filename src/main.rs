@@ -4,7 +4,6 @@ use std::{
     io::{self, Read},
 };
 
-use crate::chunk::OpCode;
 
 mod alias;
 mod bin_op;

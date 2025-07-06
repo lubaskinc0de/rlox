@@ -5,10 +5,11 @@ use anyhow::Error;
 
 use crate::alias::{StoredChunk, StoredValue};
 use crate::bin_op::BinOpKind;
+use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::value::Value;
-use crate::{OpCode, rc_refcell};
+use crate::rc_refcell;
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 
@@ -60,15 +61,15 @@ impl VirtualMachine {
                 println!("{instruction}");
             }
 
-            match instruction {
-                OpCode::Const { line: _, const_idx } => {
+            match instruction.kind() {
+                OpCodeKind::Const { const_idx } => {
                     let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
                     if self.debug_trace {
                         println!("Pushed const: {}", const_value.borrow());
                     }
                     self.value_stack.borrow_mut().push(const_value);
                 }
-                OpCode::Negate { line: _ } => {
+                OpCodeKind::Negate => {
                     let peek = self.peek()?;
                     if !peek.borrow().support_negation() {
                         return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
@@ -87,10 +88,19 @@ impl VirtualMachine {
                         _ => unreachable!(),
                     }
                 }
-                OpCode::Add { line: _ } => self.bin_op(BinOpKind::Add)?,
-                OpCode::Sub { line: _ } => self.bin_op(BinOpKind::Sub)?,
-                OpCode::Mul { line: _ } => self.bin_op(BinOpKind::Mul)?,
-                OpCode::Div { line: _ } => self.bin_op(BinOpKind::Div)?,
+                OpCodeKind::Add => self.bin_op(BinOpKind::Add)?,
+                OpCodeKind::Sub => self.bin_op(BinOpKind::Sub)?,
+                OpCodeKind::Mul => self.bin_op(BinOpKind::Mul)?,
+                OpCodeKind::Div => self.bin_op(BinOpKind::Div)?,
+                OpCodeKind::Null => {
+                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Null));
+                },
+                OpCodeKind::True => {
+                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Boolean(true)));
+                },
+                OpCodeKind::False => {
+                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Boolean(false)));
+                },
             }
             self.ip += 1;
         }

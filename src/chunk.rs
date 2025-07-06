@@ -4,40 +4,56 @@ use crate::alias::StoredValue;
 
 const STACK_CAPACITY: usize = 256;
 
-pub enum OpCode {
-    Const { line: usize, const_idx: usize },
-    Negate { line: usize },
-    Add { line: usize },
-    Sub { line: usize },
-    Mul { line: usize },
-    Div { line: usize },
+pub enum OpCodeKind {
+    Const { const_idx: usize },
+    Negate,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Null,
+    True,
+    False,
+}
+
+impl Display for OpCodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (name, args) = match self {
+            OpCodeKind::Const { const_idx } => ("OP_CONST", format!("{const_idx}")),
+            OpCodeKind::Negate => ("OP_NEGATE", "".to_string()),
+            OpCodeKind::Add => ("OP_ADD", "".to_string()),
+            OpCodeKind::Sub => ("OP_SUB", "".to_string()),
+            OpCodeKind::Mul => ("OP_MUL", "".to_string()),
+            OpCodeKind::Div => ("OP_DIV", "".to_string()),
+            OpCodeKind::Null => ("OP_NULL", "".to_string()),
+            OpCodeKind::False => ("OP_FALSE", "".to_string()),
+            OpCodeKind::True => ("OP_TRUE", "".to_string()),
+        };
+
+        write!(f, "{name:<12} {args:<6}")    
+    }
+}
+
+pub struct OpCode {
+    kind: OpCodeKind,
+    line: usize,
 }
 
 impl Display for OpCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (name, args, line) = match self {
-            OpCode::Const { const_idx, line } => ("OP_CONST", format!("{const_idx}"), line),
-            OpCode::Negate { line } => ("OP_NEGATE", "".to_string(), line),
-            OpCode::Add { line } => ("OP_ADD", "".to_string(), line),
-            OpCode::Sub { line } => ("OP_SUB", "".to_string(), line),
-            OpCode::Mul { line } => ("OP_MUL", "".to_string(), line),
-            OpCode::Div { line } => ("OP_DIV", "".to_string(), line),
-        };
-
-        write!(f, "{name:<12} {args:<6} L{line}")
+        write!(f, "{} L{}", self.kind, self.line())
     }
 }
 
 impl OpCode {
+    pub fn new(kind: OpCodeKind, line: usize) -> Self {
+        Self { kind, line }
+    }
     pub fn line(&self) -> usize {
-        match self {
-            OpCode::Const { line, .. } => *line,
-            OpCode::Negate { line } => *line,
-            OpCode::Add { line } => *line,
-            OpCode::Sub { line } => *line,
-            OpCode::Mul { line } => *line,
-            OpCode::Div { line } => *line,
-        }
+        self.line
+    }
+    pub fn kind(&self) -> &OpCodeKind {
+        &self.kind
     }
 }
 

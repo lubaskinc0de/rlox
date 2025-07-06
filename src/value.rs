@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use crate::bin_op::BinOpKind;
 
 #[derive(Debug)]
 pub enum Value {
@@ -10,15 +9,6 @@ pub enum Value {
 }
 
 impl Value {
-    #[allow(unused_variables)]
-    pub fn is_supported_binop(&self, kind: &BinOpKind) -> bool {
-        match self {
-            Value::Float(_) => true,
-            Value::Boolean(_) => false,
-            Value::Null => false,
-        }
-    }
-
     pub fn type_name(&self) -> String {
         match self {
             Value::Float(_) => "float".to_owned(),

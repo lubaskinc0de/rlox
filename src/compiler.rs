@@ -1,5 +1,12 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult}, chunk::OpCode, errors::ParsingError, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
+    alias::{StoredChunk, StoredValue, VoidResult},
+    chunk::{OpCode, OpCodeKind},
+    errors::ParsingError,
+    parser::Parser,
+    rc_refcell,
+    scanner::Scanner,
+    token::{Token, TokenType},
+    value::Value,
 };
 
 use strum_macros::FromRepr;
@@ -375,20 +382,19 @@ impl Compiler {
         }
     }
 
-    fn emit_op_code(&self, op_code: OpCode) {
+    fn emit_op_code(&self, kind: OpCodeKind) {
         if self.debug_mode {
-            println!("Emitted opcode: {op_code}")
+            println!("Emitted opcode: {kind}")
         }
         self.current_chunk
             .as_ref()
             .unwrap()
             .borrow_mut()
-            .push(op_code);
+            .push(OpCode::new(kind, self.line()));
     }
 
     fn emit_const(&self, value: StoredValue) {
-        self.emit_op_code(OpCode::Const {
-            line: self.line(),
+        self.emit_op_code(OpCodeKind::Const {
             const_idx: self.make_const(value),
         });
     }
@@ -430,11 +436,10 @@ impl Compiler {
     }
 
     fn null(&mut self) -> VoidResult {
-        let value = Value::Null;
         if self.debug_mode {
             println!("Called null()");
         }
-        self.emit_const(rc_refcell!(value));
+        self.emit_op_code(OpCodeKind::Null);
         Ok(())
     }
 
@@ -452,7 +457,7 @@ impl Compiler {
         }
 
         if op_type == &TokenType::MINUS {
-            self.emit_op_code(OpCode::Negate { line: self.line() })
+            self.emit_op_code(OpCodeKind::Negate)
         }
         Ok(())
     }
@@ -486,19 +491,19 @@ impl Compiler {
 
         match op_type {
             TokenType::PLUS => {
-                self.emit_op_code(OpCode::Add { line: self.line() });
+                self.emit_op_code(OpCodeKind::Add);
                 Ok(())
             }
             TokenType::MINUS => {
-                self.emit_op_code(OpCode::Sub { line: self.line() });
+                self.emit_op_code(OpCodeKind::Sub);
                 Ok(())
             }
             TokenType::SLASH => {
-                self.emit_op_code(OpCode::Div { line: self.line() });
+                self.emit_op_code(OpCodeKind::Div);
                 Ok(())
             }
             TokenType::STAR => {
-                self.emit_op_code(OpCode::Mul { line: self.line() });
+                self.emit_op_code(OpCodeKind::Mul);
                 Ok(())
             }
             _ => panic!("Unsupported binary token"),
