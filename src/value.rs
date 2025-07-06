@@ -23,6 +23,13 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Boolean(false) | Value::Null => false,
+            _ => true,
+        }
+    }
 }
 
 impl Display for Value {

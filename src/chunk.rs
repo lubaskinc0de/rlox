@@ -14,6 +14,7 @@ pub enum OpCodeKind {
     Null,
     True,
     False,
+    Not,
 }
 
 impl Display for OpCodeKind {
@@ -28,6 +29,7 @@ impl Display for OpCodeKind {
             OpCodeKind::Null => ("OP_NULL", "".to_string()),
             OpCodeKind::False => ("OP_FALSE", "".to_string()),
             OpCodeKind::True => ("OP_TRUE", "".to_string()),
+            OpCodeKind::Not => ("OP_NOT", "".to_string()),
         };
 
         write!(f, "{name:<12} {args:<6}")    

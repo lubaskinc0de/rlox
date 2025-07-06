@@ -8,8 +8,8 @@ use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
-use crate::value::Value;
 use crate::rc_refcell;
+use crate::value::Value;
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 
@@ -94,13 +94,23 @@ impl VirtualMachine {
                 OpCodeKind::Div => self.bin_op(BinOpKind::Div)?,
                 OpCodeKind::Null => {
                     self.value_stack.borrow_mut().push(rc_refcell!(Value::Null));
-                },
+                }
                 OpCodeKind::True => {
-                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Boolean(true)));
-                },
+                    self.value_stack
+                        .borrow_mut()
+                        .push(rc_refcell!(Value::Boolean(true)));
+                }
                 OpCodeKind::False => {
-                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Boolean(false)));
-                },
+                    self.value_stack
+                        .borrow_mut()
+                        .push(rc_refcell!(Value::Boolean(false)));
+                }
+                OpCodeKind::Not => {
+                    let value = self.pop_or_err()?;
+                    self.value_stack
+                        .borrow_mut()
+                        .push(rc_refcell!(Value::Boolean(!value.borrow().is_truthy())));
+                }
             }
             self.ip += 1;
         }

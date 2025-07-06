@@ -1,12 +1,5 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult},
-    chunk::{OpCode, OpCodeKind},
-    errors::ParsingError,
-    parser::Parser,
-    rc_refcell,
-    scanner::Scanner,
-    token::{Token, TokenType},
-    value::Value,
+    alias::{StoredChunk, StoredValue, VoidResult}, chunk::{OpCode, OpCodeKind}, compiler, errors::ParsingError, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
 };
 
 use strum_macros::FromRepr;
@@ -113,7 +106,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_BANG */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::unary),
         infix: None,
         precedence: NONE,
     },
@@ -455,15 +448,17 @@ impl Compiler {
 
     fn unary(&mut self) -> VoidResult {
         let op_type = &self.previous().unwrap().token_type.clone();
-        self.parse_precedence(Precedence::Unary)?;
-
         if self.debug_mode {
             println!("Called unary for op {:?}, {}", op_type, self.debug_string(),)
         }
 
-        if op_type == &TokenType::MINUS {
-            self.emit_op_code(OpCodeKind::Negate)
-        }
+        self.parse_precedence(Precedence::Unary)?;
+
+        match op_type {
+            TokenType::MINUS => self.emit_op_code(OpCodeKind::Negate),
+            TokenType::BANG => self.emit_op_code(OpCodeKind::Not),
+            _ => unreachable!(),
+        };
         Ok(())
     }
 
