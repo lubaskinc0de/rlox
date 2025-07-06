@@ -1,4 +1,3 @@
-#![feature(associated_type_defaults)]
 use std::{
     fs::File,
     io::{self, Read},
