@@ -71,23 +71,17 @@ impl VirtualMachine {
                 OpCodeKind::Mul => self.bin_op(BinOpKind::Mul)?,
                 OpCodeKind::Div => self.bin_op(BinOpKind::Div)?,
                 OpCodeKind::Null => {
-                    self.value_stack.borrow_mut().push(rc_refcell!(Value::Null));
+                    self.push_value(Value::Null);
                 }
                 OpCodeKind::True => {
-                    self.value_stack
-                        .borrow_mut()
-                        .push(rc_refcell!(Value::Boolean(true)));
+                    self.push_value(Value::Boolean(true));
                 }
                 OpCodeKind::False => {
-                    self.value_stack
-                        .borrow_mut()
-                        .push(rc_refcell!(Value::Boolean(false)));
+                    self.push_value(Value::Boolean(false));
                 }
                 OpCodeKind::Not => {
                     let value = self.pop_or_err()?;
-                    self.value_stack
-                        .borrow_mut()
-                        .push(rc_refcell!(Value::Boolean(!value.borrow().as_bool())));
+                    self.push_value(Value::Boolean(!value.borrow().as_bool()));
                 }
                 OpCodeKind::Eq => self.op_cmp(Compare::Equal)?,
                 OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
@@ -121,6 +115,14 @@ impl VirtualMachine {
         Ok(value)
     }
 
+    fn push_value(&self, value: Value) {
+        self.value_stack.borrow_mut().push(rc_refcell!(value));
+    }
+
+    fn push_stored_value(&self, value: StoredValue) {
+        self.value_stack.borrow_mut().push(value);
+    }
+
     fn pop_or_err(&self) -> Result<StoredValue, Error> {
         let Some(value) = self.value_stack.borrow_mut().pop() else {
             return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
@@ -135,9 +137,7 @@ impl VirtualMachine {
         match (&*a.borrow(), &*b.borrow()) {
             (Value::Float(a_val), Value::Float(b_val)) => {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
-                self.value_stack
-                    .borrow_mut()
-                    .push(rc_refcell!(Value::Float(calculated)));
+                self.push_value(Value::Float(calculated));
             }
             (val1, val2) => {
                 return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
@@ -156,7 +156,7 @@ impl VirtualMachine {
         if self.debug_trace {
             println!("Pushed const: {}", const_value.borrow());
         }
-        self.value_stack.borrow_mut().push(const_value);
+        self.push_stored_value(const_value);
     }
 
     fn op_negate(&self) -> Result<(), Error> {
@@ -171,9 +171,7 @@ impl VirtualMachine {
         let value = self.pop_or_err()?;
         match &*value.borrow() {
             Value::Float(float_value) => {
-                self.value_stack
-                    .borrow_mut()
-                    .push(rc_refcell!(Value::Float(-float_value)));
+                self.push_value(Value::Float(-float_value));
             }
             _ => unreachable!(),
         };
@@ -185,9 +183,7 @@ impl VirtualMachine {
         let a = self.pop_or_err()?;
 
         let result = a.borrow().cmp(&b.borrow()) == expected;
-        self.value_stack
-            .borrow_mut()
-            .push(rc_refcell!(Value::Boolean(result)));
+        self.push_value(Value::Boolean(result));
         Ok(())
     }
 }

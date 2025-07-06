@@ -512,34 +512,34 @@ impl Compiler {
             TokenType::STAR => {
                 self.emit_op_code(OpCodeKind::Mul);
                 Ok(())
-            },
+            }
             TokenType::BangEqual => {
                 self.emit_op_code(OpCodeKind::Eq);
                 self.emit_op_code(OpCodeKind::Not);
                 Ok(())
-            },
+            }
             TokenType::EqualEqual => {
                 self.emit_op_code(OpCodeKind::Eq);
                 Ok(())
-            },
+            }
             TokenType::GREATER => {
                 self.emit_op_code(OpCodeKind::Gt);
                 Ok(())
-            },
+            }
             TokenType::LESS => {
                 self.emit_op_code(OpCodeKind::Lt);
                 Ok(())
-            },
+            }
             TokenType::GreaterEqual => {
                 self.emit_op_code(OpCodeKind::Lt);
                 self.emit_op_code(OpCodeKind::Not);
                 Ok(())
-            },
+            }
             TokenType::LessEqual => {
                 self.emit_op_code(OpCodeKind::Gt);
                 self.emit_op_code(OpCodeKind::Not);
                 Ok(())
-            },
+            }
             _ => unreachable!(),
         }
     }
