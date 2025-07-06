@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
-use crate::object::Object;
+use crate::object::{AnyObject, Object};
 
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
     Boolean(bool),
     Null,
-    Object(Box<dyn Object>),
+    Object(Box<dyn AnyObject>),
 }
 
 #[derive(PartialEq)]
@@ -55,11 +55,12 @@ impl Value {
                 }
             }
             (Value::Null, Value::Null) => Compare::Equal,
+            (Value::Object(a), Value::Object(b)) => a.cmp(b),
             _ => Compare::NotEqual,
         }
     }
 
-    pub fn object(&self) -> Option<&Box<dyn Object>> {
+    pub fn object(&self) -> Option<&Box<dyn AnyObject>> {
         match self {
             Value::Object(obj) => Some(obj),
             _ => None,

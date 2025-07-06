@@ -5,6 +5,7 @@ use crate::{
     parser::Parser,
     rc_refcell,
     scanner::Scanner,
+    string::StringObject,
     token::{Token, TokenType},
     value::Value,
 };
@@ -173,7 +174,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_STRING */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::string),
         infix: None,
         precedence: NONE,
     },
@@ -445,6 +446,16 @@ impl Compiler {
             TokenType::TRUE => OpCodeKind::True,
             _ => unreachable!(),
         });
+        Ok(())
+    }
+
+    fn string(&mut self) -> VoidResult {
+        if self.debug_mode {
+            println!("Called string()");
+        };
+        self.emit_const(rc_refcell!(Value::Object(Box::new(StringObject::new(
+            self.previous().unwrap().literal.clone().unwrap()
+        )))));
         Ok(())
     }
 

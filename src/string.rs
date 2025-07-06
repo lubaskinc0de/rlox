@@ -1,10 +1,13 @@
-use std::{borrow::Cow, fmt::Display};
+use std::{any::Any, borrow::Cow, fmt::Display};
 
-use crate::{object::Object, value::Value};
+use crate::{
+    object::{AnyObject, Object},
+    value::{Compare, Value},
+};
 
 #[derive(Debug, Clone)]
 pub struct StringObject {
-    value: String,
+    pub value: String,
 }
 
 impl StringObject {
@@ -32,7 +35,26 @@ impl Object for StringObject {
         }
     }
 
-    fn copy(&self) -> Box<dyn Object> {
+    fn copy(&self) -> Box<dyn AnyObject> {
         Box::new(StringObject::new(self.value.clone()))
     }
+
+    fn cmp(&self, other: &Box<dyn AnyObject>) -> Compare {
+        if other.type_name() != self.type_name() {
+            return Compare::NotEqual;
+        }
+        let t = other as &dyn Any;
+        match t.downcast_ref::<StringObject>() {
+            Some(as_string) => {
+                if as_string.value == self.value {
+                    return Compare::Equal;
+                } else {
+                    return Compare::NotEqual;
+                }
+            }
+            None => unreachable!(),
+        }
+    }
 }
+
+impl AnyObject for StringObject {}
