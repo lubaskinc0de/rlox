@@ -26,7 +26,7 @@ enum Precedence {
     Or,
     And,
     Eq,
-    Comp,
+    Cmp,
     Term,
     Factor,
     Unary,
@@ -120,8 +120,8 @@ const RULES: [ParseRule; 41] = [
     /* TOKEN_BANG_EQUAL */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Eq,
     },
     /* TOKEN_EQUAL */
     ParseRule {
@@ -132,32 +132,32 @@ const RULES: [ParseRule; 41] = [
     /* TOKEN_EQUAL_EQUAL */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Eq,
     },
     /* TOKEN_GREATER */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Cmp,
     },
     /* TOKEN_GREATER_EQUAL */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Cmp,
     },
     /* TOKEN_LESS */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Cmp,
     },
     /* TOKEN_LESS_EQUAL */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::binary),
+        precedence: Cmp,
     },
     /* TOKEN_SLASH_EQUAL */
     ParseRule {
@@ -512,8 +512,35 @@ impl Compiler {
             TokenType::STAR => {
                 self.emit_op_code(OpCodeKind::Mul);
                 Ok(())
-            }
-            _ => panic!("Unsupported binary token"),
+            },
+            TokenType::BangEqual => {
+                self.emit_op_code(OpCodeKind::Eq);
+                self.emit_op_code(OpCodeKind::Not);
+                Ok(())
+            },
+            TokenType::EqualEqual => {
+                self.emit_op_code(OpCodeKind::Eq);
+                Ok(())
+            },
+            TokenType::GREATER => {
+                self.emit_op_code(OpCodeKind::Gt);
+                Ok(())
+            },
+            TokenType::LESS => {
+                self.emit_op_code(OpCodeKind::Lt);
+                Ok(())
+            },
+            TokenType::GreaterEqual => {
+                self.emit_op_code(OpCodeKind::Lt);
+                self.emit_op_code(OpCodeKind::Not);
+                Ok(())
+            },
+            TokenType::LessEqual => {
+                self.emit_op_code(OpCodeKind::Gt);
+                self.emit_op_code(OpCodeKind::Not);
+                Ok(())
+            },
+            _ => unreachable!(),
         }
     }
 

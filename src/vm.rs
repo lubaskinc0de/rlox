@@ -9,7 +9,7 @@ use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::rc_refcell;
-use crate::value::Value;
+use crate::value::{Compare, Value};
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 
@@ -63,31 +63,9 @@ impl VirtualMachine {
 
             match instruction.kind() {
                 OpCodeKind::Const { const_idx } => {
-                    let const_value = borrowed_chunk.get_const(*const_idx).unwrap();
-                    if self.debug_trace {
-                        println!("Pushed const: {}", const_value.borrow());
-                    }
-                    self.value_stack.borrow_mut().push(const_value);
+                    self.op_const(*const_idx);
                 }
-                OpCodeKind::Negate => {
-                    let peek = self.peek()?;
-                    if !peek.borrow().support_negation() {
-                        return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
-                            op: "-".to_owned(),
-                            value: format!("for {}", peek.borrow()),
-                        }));
-                    }
-
-                    let value = self.pop_or_err()?;
-                    match &*value.borrow() {
-                        Value::Float(float_value) => {
-                            self.value_stack
-                                .borrow_mut()
-                                .push(rc_refcell!(Value::Float(-float_value)));
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+                OpCodeKind::Negate => self.op_negate()?,
                 OpCodeKind::Add => self.bin_op(BinOpKind::Add)?,
                 OpCodeKind::Sub => self.bin_op(BinOpKind::Sub)?,
                 OpCodeKind::Mul => self.bin_op(BinOpKind::Mul)?,
@@ -109,8 +87,11 @@ impl VirtualMachine {
                     let value = self.pop_or_err()?;
                     self.value_stack
                         .borrow_mut()
-                        .push(rc_refcell!(Value::Boolean(!value.borrow().is_truthy())));
+                        .push(rc_refcell!(Value::Boolean(!value.borrow().as_bool())));
                 }
+                OpCodeKind::Eq => self.op_cmp(Compare::Equal)?,
+                OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
+                OpCodeKind::Lt => self.op_cmp(Compare::Lower)?,
             }
             self.ip += 1;
         }
@@ -166,6 +147,47 @@ impl VirtualMachine {
             }
         }
 
+        Ok(())
+    }
+
+    fn op_const(&self, const_idx: usize) {
+        let borrowed_chunk = self.chunk.borrow();
+        let const_value = borrowed_chunk.get_const(const_idx).unwrap();
+        if self.debug_trace {
+            println!("Pushed const: {}", const_value.borrow());
+        }
+        self.value_stack.borrow_mut().push(const_value);
+    }
+
+    fn op_negate(&self) -> Result<(), Error> {
+        let peek = self.peek()?;
+        if !peek.borrow().support_negation() {
+            return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                op: "-".to_owned(),
+                value: format!("for {}", peek.borrow()),
+            }));
+        }
+
+        let value = self.pop_or_err()?;
+        match &*value.borrow() {
+            Value::Float(float_value) => {
+                self.value_stack
+                    .borrow_mut()
+                    .push(rc_refcell!(Value::Float(-float_value)));
+            }
+            _ => unreachable!(),
+        };
+        Ok(())
+    }
+
+    fn op_cmp(&self, expected: Compare) -> Result<(), Error> {
+        let b = self.pop_or_err()?;
+        let a = self.pop_or_err()?;
+
+        let result = a.borrow().cmp(&b.borrow()) == expected;
+        self.value_stack
+            .borrow_mut()
+            .push(rc_refcell!(Value::Boolean(result)));
         Ok(())
     }
 }

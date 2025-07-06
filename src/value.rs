@@ -7,6 +7,14 @@ pub enum Value {
     Null,
 }
 
+#[derive(PartialEq)]
+pub enum Compare {
+    Equal,
+    NotEqual,
+    Greater,
+    Lower,
+}
+
 impl Value {
     pub fn type_name(&self) -> String {
         match self {
@@ -20,8 +28,31 @@ impl Value {
         matches!(self, Value::Float(_))
     }
 
-    pub fn is_truthy(&self) -> bool {
+    pub fn as_bool(&self) -> bool {
         !matches!(self, Value::Boolean(false) | Value::Null)
+    }
+
+    pub fn cmp(&self, other: &Value) -> Compare {
+        match (&self, other) {
+            (Value::Float(a), Value::Float(b)) => {
+                if a > b {
+                    Compare::Greater
+                } else if a < b {
+                    Compare::Lower
+                } else {
+                    Compare::Equal
+                }
+            }
+            (Value::Boolean(a), Value::Boolean(b)) => {
+                if a == b {
+                    Compare::Equal
+                } else {
+                    Compare::NotEqual
+                }
+            }
+            (Value::Null, Value::Null) => Compare::Equal,
+            _ => Compare::NotEqual,
+        }
     }
 }
 
