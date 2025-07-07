@@ -149,7 +149,7 @@ impl VirtualMachine {
             }
             (val1, val2) => {
                 return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
-                    op: "-".to_owned(),
+                    op: kind.to_string(),
                     value: format!("between {} and {}", val1.type_name(), val2.type_name()),
                 }));
             }
