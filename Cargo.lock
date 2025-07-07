@@ -132,7 +132,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "project01"
+name = "quote"
+version = "1.0.40"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
+dependencies = [
+ "proc-macro2",
+]
+
+[[package]]
+name = "rlox"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -140,15 +149,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
-]
-
-[[package]]
-name = "quote"
-version = "1.0.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
-dependencies = [
- "proc-macro2",
 ]
 
 [[package]]

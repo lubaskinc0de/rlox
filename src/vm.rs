@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -10,9 +9,8 @@ use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::namespace::NameSpace;
-use crate::object::string::StringObject;
+use crate::rc_refcell;
 use crate::value::{Compare, Value};
-use crate::{cast, rc_refcell};
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 

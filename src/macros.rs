@@ -10,7 +10,7 @@ macro_rules! rc_refcell {
 #[macro_export]
 macro_rules! cast {
     ($obj:expr => $type:ty) => {
-        (&*$obj as &dyn Any)
+        ($obj.as_ref() as &dyn Any)
             .downcast_ref::<$type>()
             .expect(concat!("Failed to downcast to ", stringify!($type)))
     };
@@ -20,6 +20,6 @@ macro_rules! cast {
 #[macro_export]
 macro_rules! isinstance {
     ($obj:expr, $type:ty) => {
-        (&*$obj as &dyn Any).is::<$type>()
+        ($obj.as_ref() as &dyn Any).is::<$type>()
     };
 }

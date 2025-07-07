@@ -26,7 +26,7 @@ impl Value {
             Value::Boolean(_) => "boolean".to_owned(),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => obj.type_name(),
-            Value::Identifier(val) => "string".to_owned(),
+            Value::Identifier(_) => "identifier".to_owned(),
         }
     }
 
@@ -61,13 +61,6 @@ impl Value {
             _ => Compare::NotEqual,
         }
     }
-
-    pub fn object(&self) -> Option<&DynObject> {
-        match self {
-            Value::Object(obj) => Some(obj),
-            _ => None,
-        }
-    }
 }
 
 impl Display for Value {
@@ -77,7 +70,7 @@ impl Display for Value {
             Value::Boolean(value) => format!("<value {value} of type {}>", self.type_name()),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => format!("<object {obj} of type {}>", self.type_name()),
-            Value::Identifier(val) => format!("<value '{}' of type identifier>", val.to_string()),
+            Value::Identifier(val) => format!("<value '{}' of type identifier>", val),
         };
         write!(f, "{repr}")
     }
@@ -96,9 +89,7 @@ impl Clone for Value {
 }
 
 impl Drop for Value {
-    fn drop(&mut self) {
-        println!("Value is dropped {self}")
-    }
+    fn drop(&mut self) {}
 }
 
 impl PartialEq for Value {
