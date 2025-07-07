@@ -58,6 +58,7 @@ impl VirtualMachine {
             };
 
             if self.debug_trace {
+                println!("Current stack: {:?}", self.value_stack.borrow());
                 println!("{instruction}");
             }
 
@@ -130,6 +131,13 @@ impl VirtualMachine {
         Ok(value)
     }
 
+    fn as_vm_result<T>(&self, result: Result<T, RuntimeErrorKind>) -> Result<T, Error> {
+        if let Err(error) = result {
+            return Err(self.runtime_error(error));
+        }
+        Ok(result.unwrap())
+    }
+
     fn bin_op(&self, kind: BinOpKind) -> Result<(), Error> {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
@@ -140,12 +148,8 @@ impl VirtualMachine {
                 self.push_value(Value::Float(calculated));
             }
             (Value::Object(a), Value::Object(b)) => {
-                let result = a.add(b);
-                if let Err(error) = result {
-                    return Err(self.runtime_error(error));
-                }
-
-                self.push_stored_value(result.unwrap());
+                let result = self.as_vm_result(a.add(b))?;
+                self.push_stored_value(result);
             }
             (val1, val2) => {
                 return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {

@@ -67,7 +67,7 @@ impl OpCode {
 
 pub struct Chunk {
     code: Vec<OpCode>,
-    constants: Vec<StoredValue>,
+    pub constants: Vec<StoredValue>,
 }
 
 impl Chunk {

@@ -13,10 +13,10 @@ mod macros;
 mod object;
 mod parser;
 mod scanner;
-mod string;
 mod token;
 mod value;
 mod vm;
+mod namespace;
 
 use crate::interpret::interpret;
 use anyhow::Error;

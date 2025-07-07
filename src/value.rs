@@ -90,3 +90,9 @@ impl Clone for Value {
         }
     }
 }
+
+impl Drop for Value {
+    fn drop(&mut self) {
+        println!("Value is dropped {self}")
+    }
+}

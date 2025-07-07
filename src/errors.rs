@@ -2,11 +2,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum RuntimeErrorKind {
-    #[error("Missing stack value")]
+    #[error("MissingStackValueError")]
     MissingValue,
 
-    #[error("Operation {op} is not supported {value}")]
+    #[error("OperationNotSupportedError: {op} is not supported {value}")]
     OperationNotSupported { value: String, op: String },
+
+    #[error("TypeError: Got object of type {got} expected {expected}")]
+    TypeError { got: String, expected: String },
 }
 
 #[derive(Debug, Error)]

@@ -1,13 +1,5 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult},
-    chunk::{OpCode, OpCodeKind},
-    errors::ParsingError,
-    parser::Parser,
-    rc_refcell,
-    scanner::Scanner,
-    string::StringObject,
-    token::{Token, TokenType},
-    value::Value,
+    alias::{StoredChunk, StoredValue, VoidResult}, chunk::{OpCode, OpCodeKind}, errors::ParsingError, object::string::StringObject, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
 };
 
 use strum_macros::FromRepr;

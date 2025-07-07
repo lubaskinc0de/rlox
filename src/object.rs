@@ -9,6 +9,8 @@ use crate::{
     value::Compare,
 };
 
+pub mod string;
+
 pub trait Object: Debug + Display + Any {
     fn type_name(&self) -> String;
 
