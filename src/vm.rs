@@ -9,7 +9,6 @@ use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::rc_refcell;
-use crate::string::StringObject;
 use crate::value::{Compare, Value};
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;

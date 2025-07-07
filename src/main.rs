@@ -10,13 +10,13 @@ mod compiler;
 mod errors;
 mod interpret;
 mod macros;
+mod object;
 mod parser;
 mod scanner;
+mod string;
 mod token;
 mod value;
 mod vm;
-mod object;
-mod string;
 
 use crate::interpret::interpret;
 use anyhow::Error;

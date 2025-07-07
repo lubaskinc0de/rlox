@@ -1,8 +1,9 @@
-use std::{any::Any, borrow::Cow, fmt::Display};
+use std::{any::Any, fmt::Display};
 
 use crate::{
-    object::{AnyObject, Object},
-    value::{Compare, Value},
+    alias::DynObject,
+    object::Object,
+    value::Compare,
 };
 
 #[derive(Debug, Clone)]
@@ -27,20 +28,11 @@ impl Object for StringObject {
         String::from("string")
     }
 
-    fn get_attribute(&self, attr_name: &str) -> Option<Cow<'_, Value>> {
-        // for example only
-        match attr_name {
-            "length" => Some(Cow::Owned(Value::Float(self.value.len() as f64))),
-            _ => None,
-        }
-    }
-
-    fn copy(&self) -> Box<dyn AnyObject> {
+    fn copy(&self) -> DynObject {
         Box::new(StringObject::new(self.value.clone()))
     }
 
-    fn cmp(&self, other: &Box<dyn AnyObject>) -> Compare {
-        println!("{:?}", other);
+    fn cmp(&self, other: &DynObject) -> Compare {
         if other.type_name() != self.type_name() {
             return Compare::NotEqual;
         }
@@ -48,14 +40,12 @@ impl Object for StringObject {
         match obj.downcast_ref::<StringObject>() {
             Some(as_string) => {
                 if as_string.value == self.value {
-                    return Compare::Equal;
+                    Compare::Equal
                 } else {
-                    return Compare::NotEqual;
+                    Compare::NotEqual
                 }
             }
             None => unreachable!(),
         }
     }
 }
-
-impl AnyObject for StringObject {}

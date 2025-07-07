@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
-use crate::object::{AnyObject, Object};
+use crate::alias::DynObject;
 
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
     Boolean(bool),
     Null,
-    Object(Box<dyn AnyObject>),
+    Object(DynObject),
 }
 
 #[derive(PartialEq)]
@@ -60,7 +60,7 @@ impl Value {
         }
     }
 
-    pub fn object(&self) -> Option<&Box<dyn AnyObject>> {
+    pub fn object(&self) -> Option<&DynObject> {
         match self {
             Value::Object(obj) => Some(obj),
             _ => None,
@@ -83,8 +83,8 @@ impl Display for Value {
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self {
-            Value::Float(val) => Value::Float(val.clone()),
-            Value::Boolean(val) => Value::Boolean(val.clone()),
+            Value::Float(val) => Value::Float(*val),
+            Value::Boolean(val) => Value::Boolean(*val),
             Value::Null => Value::Null,
             Value::Object(object) => Value::Object(object.copy()),
         }
