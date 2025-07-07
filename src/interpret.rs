@@ -13,7 +13,8 @@ pub fn interpret(source: String, debug: bool) -> Result<(), Error> {
     }
     compiler.compile(Rc::clone(&chunk))?;
 
-    let mut vm = VirtualMachine::new(Rc::clone(&chunk), debug)?;
+    let mut vm = VirtualMachine::new(chunk, debug)?;
+
     if debug {
         println!();
     }

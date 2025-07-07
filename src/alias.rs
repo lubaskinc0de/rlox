@@ -8,5 +8,4 @@ pub type StoredValue = Rc<RefCell<Value>>;
 pub type StoredChunk = Rc<RefCell<Chunk>>;
 pub type VoidResult = Result<(), Error>;
 pub type DynObject = Box<dyn Object>;
-pub type StoredNameSpace<'a> = Rc<RefCell<NameSpace<'a>>>;
-pub type StoredObject = Rc<RefCell<DynObject>>;
+pub type StoredNameSpace = Rc<RefCell<NameSpace>>;

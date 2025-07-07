@@ -1,1 +1,2 @@
-"st" + "ri" + "ng"
+var a = "hello" + "world" + "bye";
+print a;

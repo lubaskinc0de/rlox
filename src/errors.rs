@@ -1,3 +1,4 @@
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -10,6 +11,9 @@ pub enum RuntimeErrorKind {
 
     #[error("TypeError: Got object of type {got} expected {expected}")]
     TypeError { got: String, expected: String },
+
+    #[error("UndefinedVariableError: {name}")]
+    UndefinedVariable { name: String }
 }
 
 #[derive(Debug, Error)]

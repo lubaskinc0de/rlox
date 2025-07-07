@@ -4,6 +4,7 @@ use crate::alias::StoredValue;
 
 const STACK_CAPACITY: usize = 256;
 
+#[derive(Debug)]
 pub enum OpCodeKind {
     Const { const_idx: usize },
     Negate,
@@ -21,6 +22,7 @@ pub enum OpCodeKind {
     Print,
     Pop,
     DefineGlobal { name_idx: usize },
+    ReadGlobal { name_idx: usize },
 }
 
 impl Display for OpCodeKind {
@@ -42,12 +44,14 @@ impl Display for OpCodeKind {
             OpCodeKind::Print => ("OP_PRINT", "".to_string()),
             OpCodeKind::Pop => ("OP_POP", "".to_string()),
             OpCodeKind::DefineGlobal { name_idx } => ("OP_DEFINE_GLOBAL", format!("{name_idx}")),
+            OpCodeKind::ReadGlobal { name_idx } => ("OP_READ_GLOBAL", format!("{name_idx}")),
         };
 
         write!(f, "{name:<12} {args:<6}")
     }
 }
 
+#[derive(Debug)]
 pub struct OpCode {
     kind: OpCodeKind,
     line: usize,
@@ -71,6 +75,7 @@ impl OpCode {
     }
 }
 
+#[derive(Debug)]
 pub struct Chunk {
     code: Vec<OpCode>,
     pub constants: Vec<StoredValue>,
@@ -101,8 +106,8 @@ impl Chunk {
         self.code.get(index)
     }
 
-    pub fn get_const(&self, index: usize) -> Option<StoredValue> {
-        self.constants.get(index).cloned() // Rc clone
+    pub fn get_const(&self, index: usize) -> Option<&StoredValue> {
+        self.constants.get(index)
     }
 }
 

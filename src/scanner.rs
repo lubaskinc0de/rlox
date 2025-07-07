@@ -32,7 +32,7 @@ impl Scanner {
                 (String::from("super"), TokenType::SUPER),
                 (String::from("this"), TokenType::THIS),
                 (String::from("true"), TokenType::TRUE),
-                (String::from("let"), TokenType::VAR),
+                (String::from("var"), TokenType::VAR),
                 (String::from("while"), TokenType::WHILE),
             ]),
         }

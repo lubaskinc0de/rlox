@@ -10,18 +10,18 @@ use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
 use crate::errors::{EmptyChunkError, RuntimeError};
 use crate::namespace::NameSpace;
-use crate::object::string::{StringObject, STRING_TYPE};
-use crate::{cast, isinstance, rc_refcell};
+use crate::object::string::StringObject;
 use crate::value::{Compare, Value};
+use crate::{cast, rc_refcell};
 
 type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
 
-pub struct VirtualMachine<'a> {
+pub struct VirtualMachine {
     chunk: StoredChunk,
     ip: usize, // instruction pointer
     debug_trace: bool,
     value_stack: ValueStack,
-    globals: StoredNameSpace<'a>,
+    globals: StoredNameSpace,
 }
 
 macro_rules! calc {
@@ -36,7 +36,7 @@ macro_rules! calc {
     }};
 }
 
-impl VirtualMachine<'_> {
+impl VirtualMachine {
     pub fn new(chunk: StoredChunk, debug_trace: bool) -> Result<Self, Error> {
         if chunk.borrow().is_empty() {
             return Err(EmptyChunkError {}.into());
@@ -57,13 +57,12 @@ impl VirtualMachine<'_> {
             println!()
         }
         loop {
-            let borrowed_chunk = self.chunk.borrow();
-            let Some(instruction) = borrowed_chunk.get(self.ip) else {
+            let bchunk = self.chunk.borrow();
+            let Some(instruction) = bchunk.get(self.ip) else {
                 return Ok(());
             };
 
             if self.debug_trace {
-                println!("Current stack: {:?}", self.value_stack.borrow());
                 println!("{instruction}");
             }
 
@@ -93,16 +92,19 @@ impl VirtualMachine<'_> {
                 OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
                 OpCodeKind::Lt => self.op_cmp(Compare::Lower)?,
                 OpCodeKind::Print => self.op_print()?,
-                OpCodeKind::Pop => { self.pop_or_err()?; },
-                OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(*name_idx)?
+                OpCodeKind::Pop => {
+                    self.pop_or_err()?;
+                }
+                OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(*name_idx)?,
+                OpCodeKind::ReadGlobal { name_idx } => self.op_read_global(*name_idx)?,
             }
             self.ip += 1;
         }
     }
 
     fn runtime_error(&self, kind: RuntimeErrorKind) -> Error {
-        let borrowed_chunk = self.chunk.borrow();
-        let Some(prev_instruction) = borrowed_chunk.get(self.ip - 1) else {
+        let bchunk = self.chunk.borrow();
+        let Some(prev_instruction) = bchunk.get(self.ip - 1) else {
             panic!("Cannot get previous instruction");
         };
 
@@ -166,29 +168,23 @@ impl VirtualMachine<'_> {
         Ok(())
     }
 
-    fn read_string_const(&self, idx: usize) -> Result<&StringObject, Error> {
-        let borrowed_chunk = self.chunk.borrow();
-        let const_value = borrowed_chunk.get_const(idx).unwrap();
+    fn read_identifier_const(&self, idx: usize) -> Rc<String> {
+        let bchunk = self.chunk.borrow();
+        let const_value = bchunk.get_const(idx).unwrap();
 
         match &*const_value.borrow() {
-            Value::Object(obj) => {
-                if !isinstance!(obj, StringObject) {
-                    Err(self.runtime_error(RuntimeErrorKind::TypeError { got: obj.type_name(), expected: STRING_TYPE.to_owned() }))
-                } else {
-                    Ok(cast!(obj => StringObject))
-                }
-            },
-            _ => Err(self.runtime_error(RuntimeErrorKind::TypeError { got: "<not a string>".to_owned(), expected: STRING_TYPE.to_owned() }))
+            Value::Identifier(identifier) => identifier.clone(),
+            _ => unreachable!(),
         }
     }
 
     fn op_const(&self, const_idx: usize) {
-        let borrowed_chunk = self.chunk.borrow();
-        let const_value = borrowed_chunk.get_const(const_idx).unwrap();
+        let bchunk = self.chunk.borrow();
+        let const_value = bchunk.get_const(const_idx).unwrap();
         if self.debug_trace {
             println!("Pushed const: {}", const_value.borrow());
         }
-        self.push_stored_value(const_value);
+        self.push_stored_value(const_value.clone());
     }
 
     fn op_negate(&self) -> VoidResult {
@@ -226,8 +222,19 @@ impl VirtualMachine<'_> {
     }
 
     fn op_define_global(&self, name_idx: usize) -> VoidResult {
-        let name = self.read_string_const(name_idx)?;
+        let name = self.read_identifier_const(name_idx);
         self.globals.borrow_mut().insert(name, self.peek()?);
+        Ok(())
+    }
+
+    fn op_read_global(&self, name_idx: usize) -> VoidResult {
+        let name = self.read_identifier_const(name_idx);
+        let Some(value) = self.globals.borrow().get(&name) else {
+            return Err(self.runtime_error(RuntimeErrorKind::UndefinedVariable {
+                name: name.to_string(),
+            }));
+        };
+        self.push_stored_value(value);
         Ok(())
     }
 }

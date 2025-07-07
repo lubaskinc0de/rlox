@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     alias::{StoredChunk, StoredValue, VoidResult},
     chunk::{OpCode, OpCodeKind},
@@ -169,7 +171,7 @@ const RULES: [ParseRule; 41] = [
     },
     /* TOKEN_IDENTIFIER */
     ParseRule {
-        prefix: None,
+        prefix: Some(Compiler::variable),
         infix: None,
         precedence: NONE,
     },
@@ -434,9 +436,9 @@ impl Compiler {
 
     fn statement(&mut self) -> VoidResult {
         if self.matches(&TokenType::PRINT)? {
-            return self.print_statement();
+            self.print_statement()
         } else if self.matches(&TokenType::VAR)? {
-            return self.var_statement();
+            self.var_statement()
         } else {
             self.expr_statement()
         }
@@ -468,23 +470,31 @@ impl Compiler {
         self.consume(
             TokenType::SEMICOLON,
             "Expected ';' after variable declaration".to_owned(),
-        );
+        )?;
         self.define_global(global);
         Ok(())
     }
 
     fn parse_variable(&mut self, message: String) -> Result<usize, Error> {
-        self.consume(TokenType::IDENTIFIER, message);
+        self.consume(TokenType::IDENTIFIER, message)?;
         let prev = self.previous().unwrap();
-        Ok(
-            self.make_const(rc_refcell!(Value::Object(Box::new(StringObject::new(
-                prev.literal.clone().unwrap()
-            ))))),
-        )
+        Ok(self.make_const(rc_refcell!(Value::Identifier(Rc::new(
+            prev.literal.clone().unwrap()
+        ),))))
     }
 
     fn define_global(&mut self, name_idx: usize) {
         self.emit_op_code(OpCodeKind::DefineGlobal { name_idx });
+    }
+
+    fn variable(&mut self) -> VoidResult {
+        let prev = self.previous().unwrap();
+        let idx = self.make_const(rc_refcell!(Value::Identifier(Rc::new(
+            prev.literal.clone().unwrap()
+        ),)));
+
+        self.emit_op_code(OpCodeKind::ReadGlobal { name_idx: idx });
+        Ok(())
     }
 
     fn expression(&mut self) -> VoidResult {

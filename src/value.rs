@@ -1,4 +1,4 @@
-use std::{fmt::Display, hash::Hash};
+use std::{fmt::Display, rc::Rc};
 
 use crate::alias::DynObject;
 
@@ -7,6 +7,7 @@ pub enum Value {
     Float(f64),
     Boolean(bool),
     Null,
+    Identifier(Rc<String>),
     Object(DynObject),
 }
 
@@ -25,6 +26,7 @@ impl Value {
             Value::Boolean(_) => "boolean".to_owned(),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => obj.type_name(),
+            Value::Identifier(val) => "string".to_owned(),
         }
     }
 
@@ -75,6 +77,7 @@ impl Display for Value {
             Value::Boolean(value) => format!("<value {value} of type {}>", self.type_name()),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => format!("<object {obj} of type {}>", self.type_name()),
+            Value::Identifier(val) => format!("<value '{}' of type identifier>", val.to_string()),
         };
         write!(f, "{repr}")
     }
@@ -87,6 +90,7 @@ impl Clone for Value {
             Value::Boolean(val) => Value::Boolean(*val),
             Value::Null => Value::Null,
             Value::Object(object) => Value::Object(object.copy()),
+            Value::Identifier(val) => Value::Identifier(val.clone()),
         }
     }
 }
@@ -110,9 +114,3 @@ impl PartialEq for Value {
 }
 
 impl Eq for Value {}
-
-impl Hash for Value {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        
-    }
-}

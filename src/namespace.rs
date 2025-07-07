@@ -1,64 +1,30 @@
-use std::any::Any;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
-use crate::{
-    alias::StoredValue,
-    cast,
-    errors::RuntimeErrorKind,
-    isinstance,
-    object::{string::{StringObject, STRING_TYPE}, Object},
-};
+use crate::alias::StoredValue;
 
-type K<'a> = &'a StringObject;
+type K = Rc<String>;
 type V = StoredValue;
 
-pub struct NameSpace<'key> {
-    table: HashMap<K<'key>, V>,
+pub struct NameSpace {
+    table: HashMap<K, V>,
 }
 
-impl<'key> NameSpace<'key> {
+impl NameSpace {
     pub fn new() -> Self {
         Self {
             table: HashMap::new(),
         }
     }
 
-    pub fn insert(
-        &mut self,
-        key: K,
-        value: V,
-    ) -> Result<(), RuntimeErrorKind> {
-        if !isinstance!(key, StringObject) {
-            return Err(RuntimeErrorKind::TypeError {
-                got: key.type_name(),
-                expected: String::from(STRING_TYPE),
-            });
-        }
-        let as_string = cast!(key => StringObject);
-        self.table.insert(as_string, value);
-        Ok(())
+    pub fn insert(&mut self, key: K, value: V) {
+        self.table.insert(key, value);
     }
 
-    pub fn get(&mut self, key: K) -> Result<Option<StoredValue>, RuntimeErrorKind> {
-        if !isinstance!(key, StringObject) {
-            return Err(RuntimeErrorKind::TypeError {
-                got: key.type_name(),
-                expected: String::from(STRING_TYPE),
-            });
-        }
-
-        Ok(self.table.get(cast!(key => StringObject)).cloned())
+    pub fn get(&self, key: &K) -> Option<StoredValue> {
+        self.table.get(key).cloned()
     }
 
-    pub fn delete(&mut self, key: K) -> Result<(), RuntimeErrorKind> {
-        if !isinstance!(key, StringObject) {
-            return Err(RuntimeErrorKind::TypeError {
-                got: key.type_name(),
-                expected: String::from(STRING_TYPE),
-            });
-        }
-
-        self.table.remove(cast!(key => StringObject));
-        Ok(())
+    pub fn delete(&mut self, key: &K) {
+        self.table.remove(key);
     }
 }
