@@ -19,6 +19,7 @@ pub enum OpCodeKind {
     Gt,
     Lt,
     Print,
+    Pop,
 }
 
 impl Display for OpCodeKind {
@@ -38,6 +39,7 @@ impl Display for OpCodeKind {
             OpCodeKind::Gt => ("OP_GT", "".to_string()),
             OpCodeKind::Lt => ("OP_LT", "".to_string()),
             OpCodeKind::Print => ("OP_PRINT", "".to_string()),
+            OpCodeKind::Pop => ("OP_POP", "".to_string()),
         };
 
         write!(f, "{name:<12} {args:<6}")

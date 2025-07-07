@@ -434,7 +434,15 @@ impl Compiler {
     fn statement(&mut self) -> VoidResult {
         if self.matches(&TokenType::PRINT) {
             return self.print_statement()
+        } else {
+            self.expr_statement()
         }
+    }
+
+    fn expr_statement(&mut self) -> VoidResult {
+        self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expected ';'".to_owned())?;
+        self.emit_op_code(OpCodeKind::Pop);
         Ok(())
     }
 

@@ -88,6 +88,7 @@ impl VirtualMachine {
                 OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
                 OpCodeKind::Lt => self.op_cmp(Compare::Lower)?,
                 OpCodeKind::Print => self.op_print()?,
+                OpCodeKind::Pop => { self.pop_or_err()?; },
             }
             self.ip += 1;
         }
