@@ -1,5 +1,13 @@
 use crate::{
-    alias::{StoredChunk, StoredValue, VoidResult}, chunk::{OpCode, OpCodeKind}, errors::ParsingError, object::string::StringObject, parser::Parser, rc_refcell, scanner::Scanner, token::{Token, TokenType}, value::Value
+    alias::{StoredChunk, StoredValue, VoidResult},
+    chunk::{OpCode, OpCodeKind},
+    errors::ParsingError,
+    object::string::StringObject,
+    parser::Parser,
+    rc_refcell,
+    scanner::Scanner,
+    token::{Token, TokenType},
+    value::Value,
 };
 
 use strum_macros::FromRepr;
@@ -302,8 +310,10 @@ impl Compiler {
         self.current_chunk = Some(chunk.clone());
 
         self.advance()?;
-        self.expression()?;
-        self.consume(TokenType::EOF, "Expected end of expression".to_owned())
+        while !self.matches(&TokenType::EOF) {
+            self.declaration()?;
+        };
+        Ok(())
     }
 
     fn previous(&self) -> Option<&Token> {
@@ -402,6 +412,37 @@ impl Compiler {
 
     fn line(&self) -> usize {
         self.previous().unwrap().line
+    }
+
+    fn check(&self, token_type: &TokenType) -> bool {
+        &self.current().unwrap().token_type == token_type
+    }
+
+    fn matches(&mut self, token_type: &TokenType) -> bool {
+        if !self.check(token_type) {
+            false
+        } else {
+            self.advance();
+            true
+        }
+    }
+
+    fn declaration(&mut self) -> VoidResult {
+        self.statement()
+    }
+
+    fn statement(&mut self) -> VoidResult {
+        if self.matches(&TokenType::PRINT) {
+            return self.print_statement()
+        }
+        Ok(())
+    }
+
+    fn print_statement(&mut self) -> VoidResult {
+        self.expression()?;
+        self.consume(TokenType::SEMICOLON, "Expected ';'".to_owned())?;
+        self.emit_op_code(OpCodeKind::Print);
+        Ok(())
     }
 
     fn expression(&mut self) -> VoidResult {

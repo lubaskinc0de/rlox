@@ -87,13 +87,10 @@ impl VirtualMachine {
                 OpCodeKind::Eq => self.op_cmp(Compare::Equal)?,
                 OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
                 OpCodeKind::Lt => self.op_cmp(Compare::Lower)?,
+                OpCodeKind::Print => self.op_print()?,
             }
             self.ip += 1;
         }
-    }
-
-    pub fn stack_top(&self) -> Option<StoredValue> {
-        return self.value_stack.borrow().last().cloned();
     }
 
     fn runtime_error(&self, kind: RuntimeErrorKind) -> Error {
@@ -196,6 +193,12 @@ impl VirtualMachine {
 
         let result = a.borrow().cmp(&b.borrow()) == expected;
         self.push_value(Value::Boolean(result));
+        Ok(())
+    }
+
+    fn op_print(&self) -> Result<(), Error> {
+        let value = self.pop_or_err()?;
+        println!("{}", value.borrow());
         Ok(())
     }
 }

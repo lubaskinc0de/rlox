@@ -10,7 +10,7 @@ use crate::{
     value::{Compare, Value},
 };
 
-pub const STRING_TYPE: &'static str = "string";
+pub const STRING_TYPE: &str = "string";
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct StringObject {

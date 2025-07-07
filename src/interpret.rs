@@ -18,9 +18,8 @@ pub fn interpret(source: String, debug: bool) -> Result<(), Error> {
         println!();
     }
     vm.exec()?;
-
     if debug {
-        println!("Result: {}", vm.stack_top().unwrap().borrow());
+        println!("Exited vm")
     }
     Ok(())
 }
