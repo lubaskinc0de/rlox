@@ -2,15 +2,18 @@ use std::any::Any;
 use std::collections::HashMap;
 
 use crate::{
-    alias::{DynObject, StoredValue},
+    alias::StoredValue,
     cast,
     errors::RuntimeErrorKind,
     isinstance,
-    object::string::{STRING_TYPE, StringObject},
+    object::{string::{StringObject, STRING_TYPE}, Object},
 };
 
+type K<'a> = &'a StringObject;
+type V = StoredValue;
+
 pub struct NameSpace<'key> {
-    table: HashMap<&'key StringObject, StoredValue>,
+    table: HashMap<K<'key>, V>,
 }
 
 impl<'key> NameSpace<'key> {
@@ -22,8 +25,8 @@ impl<'key> NameSpace<'key> {
 
     pub fn insert(
         &mut self,
-        key: &'key DynObject,
-        value: StoredValue,
+        key: K,
+        value: V,
     ) -> Result<(), RuntimeErrorKind> {
         if !isinstance!(key, StringObject) {
             return Err(RuntimeErrorKind::TypeError {
@@ -36,7 +39,7 @@ impl<'key> NameSpace<'key> {
         Ok(())
     }
 
-    pub fn get(&mut self, key: &'key DynObject) -> Result<Option<StoredValue>, RuntimeErrorKind> {
+    pub fn get(&mut self, key: K) -> Result<Option<StoredValue>, RuntimeErrorKind> {
         if !isinstance!(key, StringObject) {
             return Err(RuntimeErrorKind::TypeError {
                 got: key.type_name(),
@@ -47,7 +50,7 @@ impl<'key> NameSpace<'key> {
         Ok(self.table.get(cast!(key => StringObject)).cloned())
     }
 
-    pub fn delete(&mut self, key: &'key DynObject) -> Result<(), RuntimeErrorKind> {
+    pub fn delete(&mut self, key: K) -> Result<(), RuntimeErrorKind> {
         if !isinstance!(key, StringObject) {
             return Err(RuntimeErrorKind::TypeError {
                 got: key.type_name(),

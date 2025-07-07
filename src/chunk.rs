@@ -20,6 +20,7 @@ pub enum OpCodeKind {
     Lt,
     Print,
     Pop,
+    DefineGlobal { name_idx: usize },
 }
 
 impl Display for OpCodeKind {
@@ -40,6 +41,7 @@ impl Display for OpCodeKind {
             OpCodeKind::Lt => ("OP_LT", "".to_string()),
             OpCodeKind::Print => ("OP_PRINT", "".to_string()),
             OpCodeKind::Pop => ("OP_POP", "".to_string()),
+            OpCodeKind::DefineGlobal { name_idx } => ("OP_DEFINE_GLOBAL", format!("{name_idx}")),
         };
 
         write!(f, "{name:<12} {args:<6}")

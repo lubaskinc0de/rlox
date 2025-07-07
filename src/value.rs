@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, hash::Hash};
 
 use crate::alias::DynObject;
 
@@ -94,5 +94,25 @@ impl Clone for Value {
 impl Drop for Value {
     fn drop(&mut self) {
         println!("Value is dropped {self}")
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self, other) {
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Null, Value::Null) => true,
+            (Value::Object(a), Value::Object(b)) => a.cmp(b) == Compare::Equal,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+impl Hash for Value {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        
     }
 }
