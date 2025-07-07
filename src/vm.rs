@@ -139,6 +139,14 @@ impl VirtualMachine {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
                 self.push_value(Value::Float(calculated));
             }
+            (Value::Object(a), Value::Object(b)) => {
+                let result = a.add(b);
+                if let Err(error) = result {
+                    return Err(self.runtime_error(error));
+                }
+
+                self.push_stored_value(result.unwrap());
+            }
             (val1, val2) => {
                 return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
                     op: "-".to_owned(),

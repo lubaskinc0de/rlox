@@ -1,1 +1,1 @@
-"string" == "string"
+"Hello, " + "World!"

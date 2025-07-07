@@ -1,9 +1,11 @@
 use std::{any::Any, fmt::Display};
 
 use crate::{
-    alias::DynObject,
+    alias::{DynObject, StoredValue},
+    errors::RuntimeErrorKind,
     object::Object,
-    value::Compare,
+    rc_refcell,
+    value::{Compare, Value},
 };
 
 #[derive(Debug, Clone)]
@@ -44,6 +46,25 @@ impl Object for StringObject {
                 } else {
                     Compare::NotEqual
                 }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    fn add(&self, other: &DynObject) -> Result<StoredValue, RuntimeErrorKind> {
+        if other.type_name() != self.type_name() {
+            return Err(self.operation_not_supported(other, "+".to_owned()));
+        }
+        let obj = other.as_ref() as &dyn Any;
+        match obj.downcast_ref::<StringObject>() {
+            Some(as_string) => {
+                let mut concatenated_string = String::new();
+                concatenated_string.push_str(&self.value);
+                concatenated_string.push_str(&as_string.value);
+
+                Ok(rc_refcell!(Value::Object(Box::new(StringObject::new(
+                    concatenated_string
+                )))))
             }
             None => unreachable!(),
         }
