@@ -635,14 +635,21 @@ impl Compiler {
     }
 
     fn resolve_local(&self, name: &str) -> Result<Option<usize>, Error> {
-        for (i, local) in self.locals.iter().rev().enumerate() {
+        if self.is_global_scope() {
+            return Ok(None);
+        }
+        let mut i = (self.local_count - 1) as isize;
+
+        while i >= 0 {
+            let local = &self.locals[i as usize];
             if local.name.literal.as_ref().is_some_and(|x| x == name) {
                 if !local.is_initialized {
                     return Err(self
                         .error("Cannot read local variable in their own initializer".to_owned()));
                 }
-                return Ok(Some(self.locals.len() - 1 - i));
+                return Ok(Some(self.locals.len() - 1 - i as usize));
             }
+            i -= 1;
         }
         Ok(None)
     }

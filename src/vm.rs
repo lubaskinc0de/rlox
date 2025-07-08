@@ -238,6 +238,7 @@ impl VirtualMachine {
             );
         }
         self.globals.borrow_mut().insert(name, self.peek()?);
+        self.pop_or_err()?;
         Ok(())
     }
 
