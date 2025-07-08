@@ -69,7 +69,7 @@ impl Display for Value {
             Value::Float(value) => format!("{value}"),
             Value::Boolean(value) => format!("{value}"),
             Value::Null => "null".to_owned(),
-            Value::Object(obj) => format!("<object {obj} of type {}>", self.type_name()),
+            Value::Object(obj) => format!("{obj}"),
             Value::Identifier(val) => format!("<value '{val}' of type identifier>"),
         };
         write!(f, "{repr}")

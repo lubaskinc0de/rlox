@@ -25,7 +25,7 @@ impl StringObject {
 
 impl Display for StringObject {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "'{}'", self.value)
+        write!(f, "{}", self.value)
     }
 }
 

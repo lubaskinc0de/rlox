@@ -23,6 +23,7 @@ pub enum OpCodeKind {
     Pop,
     DefineGlobal { name_idx: usize },
     ReadGlobal { name_idx: usize },
+    SetGlobal { name_idx: usize },
 }
 
 impl Display for OpCodeKind {
@@ -45,6 +46,7 @@ impl Display for OpCodeKind {
             OpCodeKind::Pop => ("OP_POP", "".to_string()),
             OpCodeKind::DefineGlobal { name_idx } => ("OP_DEFINE_GLOBAL", format!("{name_idx}")),
             OpCodeKind::ReadGlobal { name_idx } => ("OP_READ_GLOBAL", format!("{name_idx}")),
+            OpCodeKind::SetGlobal { name_idx } => ("OP_SET_GLOBAL", format!("{name_idx}")),
         };
 
         write!(f, "{name:<12} {args:<6}")

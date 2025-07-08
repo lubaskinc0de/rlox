@@ -95,6 +95,7 @@ impl VirtualMachine {
                 }
                 OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(*name_idx)?,
                 OpCodeKind::ReadGlobal { name_idx } => self.op_read_global(*name_idx)?,
+                OpCodeKind::SetGlobal { name_idx } => self.op_set_global(*name_idx)?,
             }
             self.ip += 1;
         }
@@ -241,6 +242,19 @@ impl VirtualMachine {
             }));
         };
         self.push_stored_value(value);
+        Ok(())
+    }
+
+    fn op_set_global(&self, name_idx: usize) -> VoidResult {
+        let name = self.read_identifier_const(name_idx);
+
+        let Some(_) = self.globals.borrow().get(&name) else {
+            return Err(self.runtime_error(RuntimeErrorKind::UndefinedVariable {
+                name: name.to_string(),
+            }));
+        };
+
+        self.globals.borrow_mut().insert(name, self.peek()?);
         Ok(())
     }
 }

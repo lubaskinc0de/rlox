@@ -353,20 +353,20 @@ impl Compiler {
         }
 
         match self.current().unwrap().token_type {
-            TokenType::Error => self.error_at_current(message.unwrap()),
+            TokenType::Error => Err(self.error_at_current(message.unwrap())),
             _ => Ok(()),
         }
     }
 
-    fn error_at_current(&self, message: String) -> VoidResult {
+    fn error_at_current(&self, message: String) -> Error {
         self.error_at(self.current().unwrap(), message)
     }
 
-    fn error(&self, message: String) -> VoidResult {
+    fn error(&self, message: String) -> Error {
         self.error_at(self.previous().unwrap(), message)
     }
 
-    fn error_at(&self, token: &Token, message: String) -> VoidResult {
+    fn error_at(&self, token: &Token, message: String) -> Error {
         print!("[line {}] Error", token.line);
         match token.token_type {
             TokenType::EOF => print!(" at end"),
@@ -377,14 +377,14 @@ impl Compiler {
             ),
         };
         println!(": {message}");
-        Err(ParsingError {}.into())
+        ParsingError {}.into()
     }
 
     fn consume(&mut self, token_type: TokenType, message: String) -> VoidResult {
         if self.current().unwrap().token_type == token_type {
             self.advance()
         } else {
-            self.error_at_current(message)
+            Err(self.error_at_current(message))
         }
     }
 
@@ -415,6 +415,13 @@ impl Compiler {
 
     fn line(&self) -> usize {
         self.previous().unwrap().line
+    }
+
+    fn previous_literal(&self) -> Result<String, Error> {
+        let Some(literal) = self.previous().unwrap().literal.clone() else {
+            return Err(self.error("Expected literal".to_owned()));
+        };
+        Ok(literal)
     }
 
     fn check(&self, token_type: &TokenType) -> bool {
@@ -459,7 +466,7 @@ impl Compiler {
     }
 
     fn var_statement(&mut self) -> VoidResult {
-        let global = self.parse_variable("Expected variable name".to_owned())?;
+        let global = self.parse_variable_name("Expected variable name".to_owned())?;
 
         if self.matches(&TokenType::EQUAL)? {
             self.expression()?
@@ -475,12 +482,13 @@ impl Compiler {
         Ok(())
     }
 
-    fn parse_variable(&mut self, message: String) -> Result<usize, Error> {
+    fn identifier_constant(&mut self, literal: String) -> usize {
+        self.make_const(rc_refcell!(Value::Identifier(Rc::new(literal),)))
+    }
+
+    fn parse_variable_name(&mut self, message: String) -> Result<usize, Error> {
         self.consume(TokenType::IDENTIFIER, message)?;
-        let prev = self.previous().unwrap();
-        Ok(self.make_const(rc_refcell!(Value::Identifier(Rc::new(
-            prev.literal.clone().unwrap()
-        ),))))
+        Ok(self.identifier_constant(self.previous_literal()?))
     }
 
     fn define_global(&mut self, name_idx: usize) {
@@ -488,12 +496,18 @@ impl Compiler {
     }
 
     fn variable(&mut self) -> VoidResult {
-        let prev = self.previous().unwrap();
-        let idx = self.make_const(rc_refcell!(Value::Identifier(Rc::new(
-            prev.literal.clone().unwrap()
-        ),)));
+        self.named_variable(self.previous_literal()?)
+    }
 
-        self.emit_op_code(OpCodeKind::ReadGlobal { name_idx: idx });
+    fn named_variable(&mut self, literal: String) -> VoidResult {
+        let name_idx = self.identifier_constant(literal);
+
+        if self.matches(&TokenType::EQUAL)? {
+            self.expression()?;
+            self.emit_op_code(OpCodeKind::SetGlobal { name_idx });
+        } else {
+            self.emit_op_code(OpCodeKind::ReadGlobal { name_idx });
+        }
         Ok(())
     }
 
@@ -650,7 +664,7 @@ impl Compiler {
         }
         self.advance()?;
         let Some(prefix_rule) = self.get_rule(&self.previous().unwrap().token_type).prefix else {
-            return self.error("Expected expression".to_owned());
+            return Err(self.error("Expected expression".to_owned()));
         };
 
         prefix_rule(self)?;
