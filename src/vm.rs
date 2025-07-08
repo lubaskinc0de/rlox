@@ -265,17 +265,17 @@ impl VirtualMachine {
         Ok(())
     }
 
-fn op_read_local(&self, name_idx: usize) -> VoidResult {
-    let bwed = self.value_stack.borrow();
-    let Some(value) = bwed.get(name_idx) else {
-        return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
-    };
-    let cloned_value = value.clone();
-    drop(bwed);
+    fn op_read_local(&self, name_idx: usize) -> VoidResult {
+        let bwed = self.value_stack.borrow();
+        let Some(value) = bwed.get(name_idx) else {
+            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+        };
+        let cloned_value = value.clone();
+        drop(bwed);
 
-    self.push_stored_value(cloned_value);
-    Ok(())
-}
+        self.push_stored_value(cloned_value);
+        Ok(())
+    }
 
     fn op_set_local(&self, name_idx: usize) -> VoidResult {
         self.value_stack.borrow_mut()[name_idx] = self.peek()?;

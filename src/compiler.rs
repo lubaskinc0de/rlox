@@ -605,6 +605,8 @@ impl Compiler {
         self.named_variable(self.previous_string_literal()?, can_assign)
     }
 
+    #[allow(clippy::unnecessary_unwrap)]
+    #[allow(clippy::needless_late_init)]
     fn named_variable(&mut self, name: String, can_assign: bool) -> VoidResult {
         let get_op: OpCodeKind;
         let set_op: OpCodeKind;
