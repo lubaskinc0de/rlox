@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use crate::token::Token;
 
 pub struct Parser {
-    pub current: Option<Token>,
-    pub previous: Option<Token>,
+    pub current: Option<Rc<Token>>,
+    pub previous: Option<Rc<Token>>,
 }
 
 /// Actual parsing logic in ``Compiler`` according to the book

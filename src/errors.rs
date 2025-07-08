@@ -13,6 +13,9 @@ pub enum RuntimeErrorKind {
 
     #[error("AlreadyDefinedVariableError: name '{name}' is already defined")]
     AlreadyDefinedVariable { name: String },
+
+    #[error("TypeError: expected {expected}, got {provided}")]
+    TypeError { expected: String, provided: String },
 }
 
 #[derive(Debug, Error)]

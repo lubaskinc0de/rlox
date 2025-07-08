@@ -1,6 +1,6 @@
 use std::{fmt::Display, rc::Rc};
 
-use crate::alias::DynObject;
+use crate::{alias::DynObject, object::ResultRE};
 
 #[derive(Debug)]
 pub enum Value {
@@ -11,7 +11,7 @@ pub enum Value {
     Object(DynObject),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Compare {
     Equal,
     NotEqual,
@@ -38,27 +38,27 @@ impl Value {
         !matches!(self, Value::Boolean(false) | Value::Null)
     }
 
-    pub fn cmp(&self, other: &Value) -> Compare {
+    pub fn cmp(&self, other: &Value) -> ResultRE<Compare> {
         match (&self, other) {
             (Value::Float(a), Value::Float(b)) => {
                 if a > b {
-                    Compare::Greater
+                    Ok(Compare::Greater)
                 } else if a < b {
-                    Compare::Lower
+                    Ok(Compare::Lower)
                 } else {
-                    Compare::Equal
+                    Ok(Compare::Equal)
                 }
             }
             (Value::Boolean(a), Value::Boolean(b)) => {
                 if a == b {
-                    Compare::Equal
+                    Ok(Compare::Equal)
                 } else {
-                    Compare::NotEqual
+                    Ok(Compare::NotEqual)
                 }
             }
-            (Value::Null, Value::Null) => Compare::Equal,
+            (Value::Null, Value::Null) => Ok(Compare::Equal),
             (Value::Object(a), Value::Object(b)) => a.cmp(b),
-            _ => Compare::NotEqual,
+            _ => Ok(Compare::NotEqual),
         }
     }
 }
@@ -89,7 +89,8 @@ impl Clone for Value {
 }
 
 impl Drop for Value {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+    }
 }
 
 impl PartialEq for Value {
@@ -98,7 +99,9 @@ impl PartialEq for Value {
             (Value::Float(a), Value::Float(b)) => a == b,
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Null, Value::Null) => true,
-            (Value::Object(a), Value::Object(b)) => a.cmp(b) == Compare::Equal,
+            (Value::Object(a), Value::Object(b)) => {
+                a.cmp(b).unwrap_or(Compare::NotEqual) == Compare::Equal
+            }
             _ => false,
         }
     }

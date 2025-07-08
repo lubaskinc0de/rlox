@@ -72,7 +72,10 @@ fn main() {
     let debug = cli.debug;
 
     let result = match (cli.repl, file_name) {
-        (true, None) => Ok(repl(debug)),
+        (true, None) => {
+            repl(debug);
+            Ok(())
+        }
         (false, None) => panic!("Pass the file name or run in REPL mode"),
         (false, Some(filename)) | (true, Some(filename)) => {
             let content = read_file_to_string(&filename);

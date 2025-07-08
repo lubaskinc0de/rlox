@@ -96,6 +96,8 @@ impl VirtualMachine {
                 OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(*name_idx)?,
                 OpCodeKind::ReadGlobal { name_idx } => self.op_read_global(*name_idx)?,
                 OpCodeKind::SetGlobal { name_idx } => self.op_set_global(*name_idx)?,
+                OpCodeKind::ReadLocal { name_idx } => self.op_read_local(*name_idx)?,
+                OpCodeKind::SetLocal { name_idx } => self.op_set_local(*name_idx)?,
             }
             self.ip += 1;
         }
@@ -209,7 +211,12 @@ impl VirtualMachine {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
 
-        let result = a.borrow().cmp(&b.borrow()) == expected;
+        let cmp_result = a.borrow().cmp(&b.borrow());
+        if cmp_result.is_err() {
+            #[allow(clippy::unnecessary_unwrap)]
+            return Err(self.runtime_error(cmp_result.unwrap_err()));
+        }
+        let result = cmp_result.unwrap() == expected;
         self.push_value(Value::Boolean(result));
         Ok(())
     }
@@ -255,6 +262,23 @@ impl VirtualMachine {
         };
 
         self.globals.borrow_mut().insert(name, self.peek()?);
+        Ok(())
+    }
+
+fn op_read_local(&self, name_idx: usize) -> VoidResult {
+    let bwed = self.value_stack.borrow();
+    let Some(value) = bwed.get(name_idx) else {
+        return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+    };
+    let cloned_value = value.clone();
+    drop(bwed);
+
+    self.push_stored_value(cloned_value);
+    Ok(())
+}
+
+    fn op_set_local(&self, name_idx: usize) -> VoidResult {
+        self.value_stack.borrow_mut()[name_idx] = self.peek()?;
         Ok(())
     }
 }

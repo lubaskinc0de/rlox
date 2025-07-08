@@ -11,6 +11,8 @@ use crate::{
 
 pub mod string;
 
+pub type ResultRE<T> = Result<T, RuntimeErrorKind>; // result runtime error
+
 pub trait Object: Debug + Display + Any {
     fn type_name(&self) -> String;
 
@@ -22,8 +24,8 @@ pub trait Object: Debug + Display + Any {
     fn copy(&self) -> DynObject;
 
     #[allow(unused_variables)]
-    fn cmp(&self, other: &DynObject) -> Compare {
-        Compare::NotEqual
+    fn cmp(&self, other: &DynObject) -> ResultRE<Compare> {
+        Ok(Compare::NotEqual)
     }
 
     fn operation_not_supported(&self, other: &DynObject, op: String) -> RuntimeErrorKind {
@@ -33,7 +35,7 @@ pub trait Object: Debug + Display + Any {
         }
     }
 
-    fn add(&self, other: &DynObject) -> Result<StoredValue, RuntimeErrorKind> {
+    fn add(&self, other: &DynObject) -> ResultRE<StoredValue> {
         Err(self.operation_not_supported(other, "+".to_owned()))
     }
 }

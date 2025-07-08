@@ -15,11 +15,35 @@ use crate::{
 use anyhow::Error;
 use strum_macros::FromRepr;
 
+#[derive(Debug)]
+struct Local {
+    name: Rc<Token>,
+    depth: usize,
+    pub is_initialized: bool,
+}
+
+impl Local {
+    pub fn new(name: Rc<Token>, depth: usize, is_initialized: bool) -> Self {
+        Self {
+            name,
+            depth,
+            is_initialized,
+        }
+    }
+
+    pub fn mark_initialized(&mut self) {
+        self.is_initialized = true;
+    }
+}
+
 pub struct Compiler {
     parser: Parser,
     scanner: Scanner,
     current_chunk: Option<StoredChunk>,
     debug_mode: bool,
+    local_count: usize,
+    scope_depth: usize,
+    locals: Vec<Local>,
 }
 
 #[derive(Copy, Clone, FromRepr, Debug)]
@@ -306,6 +330,9 @@ impl Compiler {
             scanner,
             current_chunk: None,
             debug_mode,
+            local_count: 0,
+            scope_depth: 0,
+            locals: vec![],
         }
     }
 
@@ -319,11 +346,11 @@ impl Compiler {
         Ok(())
     }
 
-    fn previous(&self) -> Option<&Token> {
+    fn previous(&self) -> Option<&Rc<Token>> {
         self.parser.previous.as_ref()
     }
 
-    fn current(&self) -> Option<&Token> {
+    fn current(&self) -> Option<&Rc<Token>> {
         self.parser.current.as_ref()
     }
 
@@ -347,7 +374,7 @@ impl Compiler {
             _ => None,
         };
 
-        self.parser.current = Some(new_token);
+        self.parser.current = Some(Rc::new(new_token));
         if self.debug_mode {
             println!("Called advance(), {}", self.debug_string(),);
         }
@@ -449,9 +476,53 @@ impl Compiler {
             self.print_statement()
         } else if self.matches(&TokenType::VAR)? {
             self.var_statement()
+        } else if self.matches(&TokenType::LeftBrace)? {
+            self.begin_scope();
+            self.block()?;
+            self.end_scope();
+            Ok(())
         } else {
             self.expr_statement()
         }
+    }
+
+    fn last_local(&mut self) -> Option<&mut Local> {
+        if self.local_count == 0 {
+            return None;
+        }
+        self.locals.get_mut(self.local_count - 1)
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
+        while self.local_count > 0 && self.last_local().unwrap().depth > self.scope_depth {
+            // removing locals of exited scope
+            self.emit_op_code(OpCodeKind::Pop);
+            self.local_count -= 1;
+        }
+    }
+
+    fn is_local_scope(&self) -> bool {
+        self.scope_depth > 0
+    }
+
+    fn is_global_scope(&self) -> bool {
+        self.scope_depth == 0
+    }
+
+    fn block(&mut self) -> VoidResult {
+        while !self.check(&TokenType::RightBrace) && !self.check(&TokenType::EOF) {
+            self.declaration()?;
+        }
+
+        self.consume(
+            TokenType::RightBrace,
+            "Expected '}' at the end of block".to_owned(),
+        )
     }
 
     fn expr_statement(&mut self) -> VoidResult {
@@ -491,10 +562,42 @@ impl Compiler {
 
     fn parse_variable_name(&mut self, message: String) -> Result<usize, Error> {
         self.consume(TokenType::IDENTIFIER, message)?;
+        self.declare_variable()?;
+
+        if self.is_local_scope() {
+            return Ok(0);
+            // At runtime, locals aren’t looked up by name.
+            // There’s no need to stuff the variable’s name into the constant table,
+            // so if the declaration is inside a local scope, we return a dummy table index instead.
+        }
+
         Ok(self.identifier_constant(self.previous_string_literal()?))
     }
 
+    fn declare_variable(&mut self) -> VoidResult {
+        if self.is_global_scope() {
+            return Ok(());
+        }
+
+        let local_name = self.previous().unwrap();
+        if local_name.literal.is_none() {
+            return Err(self.error("Expected literal".to_owned()));
+        }
+        self.add_local(local_name.clone());
+        Ok(())
+    }
+
+    fn add_local(&mut self, name: Rc<Token>) {
+        let local = Local::new(name, self.scope_depth, false);
+        self.locals.push(local);
+        self.local_count += 1;
+    }
+
     fn define_global(&mut self, name_idx: usize) {
+        if self.is_local_scope() {
+            self.last_local().unwrap().mark_initialized();
+            return;
+        }
         self.emit_op_code(OpCodeKind::DefineGlobal { name_idx });
     }
 
@@ -502,16 +605,44 @@ impl Compiler {
         self.named_variable(self.previous_string_literal()?, can_assign)
     }
 
-    fn named_variable(&mut self, literal: String, can_assign: bool) -> VoidResult {
-        let name_idx = self.identifier_constant(literal);
+    fn named_variable(&mut self, name: String, can_assign: bool) -> VoidResult {
+        let get_op: OpCodeKind;
+        let set_op: OpCodeKind;
+
+        let local_idx = self.resolve_local(&name)?;
+        if local_idx.is_some() {
+            get_op = OpCodeKind::ReadLocal {
+                name_idx: local_idx.unwrap(),
+            };
+            set_op = OpCodeKind::SetLocal {
+                name_idx: local_idx.unwrap(),
+            }
+        } else {
+            let name_idx = self.identifier_constant(name);
+            get_op = OpCodeKind::ReadGlobal { name_idx };
+            set_op = OpCodeKind::SetGlobal { name_idx }
+        }
 
         if can_assign && self.matches(&TokenType::EQUAL)? {
             self.expression()?;
-            self.emit_op_code(OpCodeKind::SetGlobal { name_idx });
+            self.emit_op_code(set_op);
         } else {
-            self.emit_op_code(OpCodeKind::ReadGlobal { name_idx });
+            self.emit_op_code(get_op);
         }
         Ok(())
+    }
+
+    fn resolve_local(&self, name: &str) -> Result<Option<usize>, Error> {
+        for (i, local) in self.locals.iter().rev().enumerate() {
+            if local.name.literal.as_ref().is_some_and(|x| x == name) {
+                if !local.is_initialized {
+                    return Err(self
+                        .error("Cannot read local variable in their own initializer".to_owned()));
+                }
+                return Ok(Some(self.locals.len() - 1 - i));
+            }
+        }
+        Ok(None)
     }
 
     fn expression(&mut self) -> VoidResult {

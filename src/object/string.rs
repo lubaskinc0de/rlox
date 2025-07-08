@@ -5,7 +5,7 @@ use crate::{
     cast,
     errors::RuntimeErrorKind,
     isinstance,
-    object::Object,
+    object::{Object, ResultRE},
     rc_refcell,
     value::{Compare, Value},
 };
@@ -38,23 +38,23 @@ impl Object for StringObject {
         Box::new(StringObject::new(self.value.clone()))
     }
 
-    fn cmp(&self, other: &DynObject) -> Compare {
+    fn cmp(&self, other: &DynObject) -> ResultRE<Compare> {
         if !isinstance!(other, StringObject) {
-            return Compare::NotEqual;
+            return Ok(Compare::NotEqual);
         }
-        let as_string = cast!(other => StringObject);
+        let as_string = cast!(other => StringObject)?;
         if as_string.value == self.value {
-            Compare::Equal
+            Ok(Compare::Equal)
         } else {
-            Compare::NotEqual
+            Ok(Compare::NotEqual)
         }
     }
 
-    fn add(&self, other: &DynObject) -> Result<StoredValue, RuntimeErrorKind> {
+    fn add(&self, other: &DynObject) -> ResultRE<StoredValue> {
         if !isinstance!(other, StringObject) {
             return Err(self.operation_not_supported(other, "+".to_owned()));
         }
-        let as_string = cast!(other => StringObject);
+        let as_string = cast!(other => StringObject)?;
         let mut concatenated_string = String::new();
         concatenated_string.push_str(&self.value);
         concatenated_string.push_str(&as_string.value);
