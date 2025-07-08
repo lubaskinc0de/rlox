@@ -23,8 +23,4 @@ impl NameSpace {
     pub fn get(&self, key: &K) -> Option<StoredValue> {
         self.table.get(key).cloned()
     }
-
-    pub fn delete(&mut self, key: &K) {
-        self.table.remove(key);
-    }
 }

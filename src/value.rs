@@ -66,8 +66,8 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
-            Value::Float(value) => format!("<value {value} of type {}>", self.type_name()),
-            Value::Boolean(value) => format!("<value {value} of type {}>", self.type_name()),
+            Value::Float(value) => format!("{value}"),
+            Value::Boolean(value) => format!("{value}"),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => format!("<object {obj} of type {}>", self.type_name()),
             Value::Identifier(val) => format!("<value '{}' of type identifier>", val),

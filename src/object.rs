@@ -28,7 +28,7 @@ pub trait Object: Debug + Display + Any {
 
     fn operation_not_supported(&self, other: &DynObject, op: String) -> RuntimeErrorKind {
         RuntimeErrorKind::OperationNotSupported {
-            value: format!("between {} and {}", self.type_name(), other.type_name()),
+            target: format!("between {} and {}", self.type_name(), other.type_name()),
             op,
         }
     }

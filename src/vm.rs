@@ -158,7 +158,7 @@ impl VirtualMachine {
             (val1, val2) => {
                 return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
                     op: kind.to_string(),
-                    value: format!("between {} and {}", val1.type_name(), val2.type_name()),
+                    target: format!("between {} and {}", val1.type_name(), val2.type_name()),
                 }));
             }
         }
@@ -190,7 +190,7 @@ impl VirtualMachine {
         if !peek.borrow().support_negation() {
             return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
                 op: "-".to_owned(),
-                value: format!("for {}", peek.borrow()),
+                target: format!("for {}", peek.borrow()),
             }));
         }
 
@@ -221,6 +221,14 @@ impl VirtualMachine {
 
     fn op_define_global(&self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
+
+        if self.globals.borrow_mut().get(&name).is_some() {
+            return Err(
+                self.runtime_error(RuntimeErrorKind::AlreadyDefinedVariable {
+                    name: name.to_string(),
+                }),
+            );
+        }
         self.globals.borrow_mut().insert(name, self.peek()?);
         Ok(())
     }

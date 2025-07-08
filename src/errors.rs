@@ -5,11 +5,14 @@ pub enum RuntimeErrorKind {
     #[error("MissingStackValueError")]
     MissingValue,
 
-    #[error("OperationNotSupportedError: {op} is not supported {value}")]
-    OperationNotSupported { value: String, op: String },
+    #[error("OperationNotSupportedError: {op} is not supported {target}")]
+    OperationNotSupported { target: String, op: String },
 
-    #[error("UndefinedVariableError: {name}")]
+    #[error("UndefinedVariableError: name '{name}' is not defined")]
     UndefinedVariable { name: String },
+
+    #[error("AlreadyDefinedVariableError: name '{name}' is already defined")]
+    AlreadyDefinedVariable { name: String },
 }
 
 #[derive(Debug, Error)]
