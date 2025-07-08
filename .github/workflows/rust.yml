@@ -9,10 +9,8 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build:
-
+  lint:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Run Clippy
