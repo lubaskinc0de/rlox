@@ -47,7 +47,7 @@ fn read_file_to_string(file_name: &str) -> String {
     buf
 }
 
-fn repl(debug: bool) -> Result<(), Error> {
+fn repl(debug: bool) {
     println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
     println!("Enter program code:");
     loop {
@@ -56,7 +56,9 @@ fn repl(debug: bool) -> Result<(), Error> {
         io::stdin()
             .read_line(&mut prompt)
             .expect("Failed to read input");
-        interpret(prompt, debug)?;
+        if let Err(e) = interpret(prompt, debug) {
+            println!("{e}")
+        };
     }
 }
 
@@ -70,7 +72,7 @@ fn main() {
     let debug = cli.debug;
 
     let result = match (cli.repl, file_name) {
-        (true, None) => repl(debug),
+        (true, None) => Ok(repl(debug)),
         (false, None) => panic!("Pass the file name or run in REPL mode"),
         (false, Some(filename)) | (true, Some(filename)) => {
             let content = read_file_to_string(&filename);

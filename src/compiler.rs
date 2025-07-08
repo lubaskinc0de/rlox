@@ -38,7 +38,7 @@ enum Precedence {
     Primary,
 }
 
-type ParseFn = fn(&mut Compiler) -> VoidResult;
+type ParseFn = fn(&mut Compiler, can_assign: bool) -> VoidResult;
 
 #[derive(Debug)]
 struct ParseRule {
@@ -417,7 +417,10 @@ impl Compiler {
         self.previous().unwrap().line
     }
 
-    fn previous_literal(&self) -> Result<String, Error> {
+    fn previous_string_literal(&self) -> Result<String, Error> {
+        if self.previous().unwrap().token_type != TokenType::IDENTIFIER {
+            return Err(self.error("Expected identifier".to_owned()));
+        }
         let Some(literal) = self.previous().unwrap().literal.clone() else {
             return Err(self.error("Expected literal".to_owned()));
         };
@@ -488,21 +491,21 @@ impl Compiler {
 
     fn parse_variable_name(&mut self, message: String) -> Result<usize, Error> {
         self.consume(TokenType::IDENTIFIER, message)?;
-        Ok(self.identifier_constant(self.previous_literal()?))
+        Ok(self.identifier_constant(self.previous_string_literal()?))
     }
 
     fn define_global(&mut self, name_idx: usize) {
         self.emit_op_code(OpCodeKind::DefineGlobal { name_idx });
     }
 
-    fn variable(&mut self) -> VoidResult {
-        self.named_variable(self.previous_literal()?)
+    fn variable(&mut self, can_assign: bool) -> VoidResult {
+        self.named_variable(self.previous_string_literal()?, can_assign)
     }
 
-    fn named_variable(&mut self, literal: String) -> VoidResult {
+    fn named_variable(&mut self, literal: String, can_assign: bool) -> VoidResult {
         let name_idx = self.identifier_constant(literal);
 
-        if self.matches(&TokenType::EQUAL)? {
+        if can_assign && self.matches(&TokenType::EQUAL)? {
             self.expression()?;
             self.emit_op_code(OpCodeKind::SetGlobal { name_idx });
         } else {
@@ -518,7 +521,8 @@ impl Compiler {
         self.parse_precedence(Precedence::Assignment)
     }
 
-    fn number(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn number(&mut self, can_assign: bool) -> VoidResult {
         let value = Value::Float(
             self.previous()
                 .unwrap()
@@ -535,7 +539,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn literal(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn literal(&mut self, can_assign: bool) -> VoidResult {
         if self.debug_mode {
             println!("Called literal()");
         }
@@ -548,7 +553,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn string(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn string(&mut self, can_assign: bool) -> VoidResult {
         if self.debug_mode {
             println!("Called string()");
         };
@@ -558,12 +564,14 @@ impl Compiler {
         Ok(())
     }
 
-    fn grouping(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn grouping(&mut self, can_assign: bool) -> VoidResult {
         self.expression()?;
         self.consume(TokenType::RightParen, "Expected ')'".to_owned())
     }
 
-    fn unary(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn unary(&mut self, can_assign: bool) -> VoidResult {
         let op_type = &self.previous().unwrap().token_type.clone();
         if self.debug_mode {
             println!("Called unary for op {:?}, {}", op_type, self.debug_string(),)
@@ -590,7 +598,8 @@ impl Compiler {
         (RULES.get(idx).unwrap()) as _
     }
 
-    fn binary(&mut self) -> VoidResult {
+    #[allow(unused_variables)]
+    fn binary(&mut self, can_assign: bool) -> VoidResult {
         let op_type = &self.previous().unwrap().token_type.clone();
         let rule = self.get_rule(op_type);
         let next_precedence = self.next_precedence(rule.precedence);
@@ -667,7 +676,8 @@ impl Compiler {
             return Err(self.error("Expected expression".to_owned()));
         };
 
-        prefix_rule(self)?;
+        let can_assign = precedence as usize <= Assignment as usize;
+        prefix_rule(self, can_assign)?;
 
         let current_token_precedence = self
             .get_rule(&self.current().unwrap().token_type)
@@ -710,8 +720,13 @@ impl Compiler {
             if self.debug_mode {
                 println!("Calling infix rule for {}", self.previous().unwrap())
             }
-            infix_rule(self)?;
+            infix_rule(self, can_assign)?;
         };
-        Ok(())
+
+        if can_assign && self.matches(&TokenType::EQUAL)? {
+            Err(self.error("Invalid assignment target".to_owned()))
+        } else {
+            Ok(())
+        }
     }
 }
