@@ -48,6 +48,7 @@ impl<'ns> VirtualMachine<'ns> {
         if self.debug_trace {
             println!("Executing this chunk:");
             println!("{}", self.chunk.borrow());
+            println!("Chunk constants: {:?}", self.chunk.borrow().constants);
             println!()
         }
         loop {
@@ -97,6 +98,8 @@ impl<'ns> VirtualMachine<'ns> {
                 OpCodeKind::SetGlobal { name_idx } => self.op_set_global(name_idx)?,
                 OpCodeKind::ReadLocal { name_idx } => self.op_read_local(name_idx)?,
                 OpCodeKind::SetLocal { name_idx } => self.op_set_local(name_idx)?,
+                OpCodeKind::JumpIfFalse { offset } => self.op_jump_if_false(offset)?,
+                OpCodeKind::Jump { offset } => self.op_jump(offset),
             }
             self.ip += 1;
         }
@@ -280,5 +283,16 @@ impl<'ns> VirtualMachine<'ns> {
     fn op_set_local(&mut self, name_idx: usize) -> VoidResult {
         self.value_stack[name_idx] = self.peek()?;
         Ok(())
+    }
+
+    fn op_jump_if_false(&mut self, offset: usize) -> VoidResult {
+        if !self.peek()?.borrow().as_bool() {
+            self.ip += offset;
+        }
+        Ok(())
+    }
+
+    fn op_jump(&mut self, offset: usize) {
+        self.ip += offset;
     }
 }

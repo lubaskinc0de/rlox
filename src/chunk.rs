@@ -26,6 +26,8 @@ pub enum OpCodeKind {
     SetGlobal { name_idx: usize },
     ReadLocal { name_idx: usize },
     SetLocal { name_idx: usize },
+    JumpIfFalse { offset: usize },
+    Jump { offset: usize },
 }
 
 impl Display for OpCodeKind {
@@ -51,6 +53,8 @@ impl Display for OpCodeKind {
             OpCodeKind::SetGlobal { name_idx } => ("OP_SET_GLOBAL", format!("{name_idx}")),
             OpCodeKind::ReadLocal { name_idx } => ("OP_READ_LOCAL", format!("{name_idx}")),
             OpCodeKind::SetLocal { name_idx } => ("OP_SET_LOCAL", format!("{name_idx}")),
+            OpCodeKind::JumpIfFalse { offset } => ("OP_JUMP_IF_FALSE", format!("{offset}")),
+            OpCodeKind::Jump { offset } => ("OP_JUMP", format!("{offset}")),
         };
 
         write!(f, "{name:<12} {args:<6}")
@@ -110,6 +114,14 @@ impl Chunk {
 
     pub fn get_const(&self, index: usize) -> Option<&StoredValue> {
         self.constants.get(index)
+    }
+
+    pub fn replace(&mut self, index: usize, op_code: OpCode) {
+        self.code[index] = op_code;
+    }
+
+    pub fn len(&self) -> usize {
+        self.code.len()
     }
 }
 

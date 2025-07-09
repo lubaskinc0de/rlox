@@ -479,6 +479,8 @@ impl Compiler {
             self.block()?;
             self.end_scope();
             Ok(())
+        } else if self.matches(&TokenType::IF)? {
+            self.if_statement()
         } else {
             self.expr_statement()
         }
@@ -640,7 +642,7 @@ impl Compiler {
         if self.is_global_scope() {
             return Ok(None);
         }
-        
+
         for i in (0..self.local_count()).rev() {
             let local = &self.locals[i];
             if local.name.literal.as_ref().is_some_and(|x| x == name) {
@@ -652,6 +654,60 @@ impl Compiler {
             }
         }
         Ok(None)
+    }
+
+    fn emit_jump(&mut self, kind: OpCodeKind) -> usize {
+        self.emit_op_code(kind);
+        self.current_chunk.as_ref().unwrap().borrow().len() - 1
+    }
+
+    fn patch_jump(&mut self, jump_idx: usize) {
+        let jump = self.current_chunk.as_ref().unwrap().borrow().len() - 1 - jump_idx;
+        let mut mut_chunk = self.current_chunk.as_ref().unwrap().borrow_mut();
+        let op_code = mut_chunk
+            .get(jump_idx)
+            .expect("Invalid jump offset in patch_jump()");
+
+        match &mut op_code.kind() {
+            OpCodeKind::JumpIfFalse { .. } => {
+                mut_chunk.replace(
+                    jump_idx,
+                    OpCode::new(OpCodeKind::JumpIfFalse { offset: jump }, self.line()),
+                );
+            }
+            OpCodeKind::Jump { .. } => {
+                mut_chunk.replace(
+                    jump_idx,
+                    OpCode::new(OpCodeKind::Jump { offset: jump }, self.line()),
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn if_statement(&mut self) -> VoidResult {
+        self.consume(TokenType::LeftParen, "Expected '(' after if".to_owned())?;
+        self.expression()?;
+        self.consume(
+            TokenType::RightParen,
+            "Expected ')' after if condition".to_owned(),
+        )?;
+
+        let then_jump = self.emit_jump(OpCodeKind::JumpIfFalse { offset: 0 });
+        self.emit_op_code(OpCodeKind::Pop);
+
+        self.statement()?;
+        let else_jump = self.emit_jump(OpCodeKind::Jump { offset: 0 });
+
+        self.patch_jump(then_jump);
+
+        self.emit_op_code(OpCodeKind::Pop);
+        if self.matches(&TokenType::ELSE)? {
+            self.statement()?;
+        }
+
+        self.patch_jump(else_jump);
+        Ok(())
     }
 
     fn expression(&mut self) -> VoidResult {
