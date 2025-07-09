@@ -1,7 +1,0 @@
-var glob = 10;
-print glob;
-{
-    var a = 1;
-    print a;
-}
-print "a" + "b";
