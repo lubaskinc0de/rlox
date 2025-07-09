@@ -2,9 +2,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum RuntimeErrorKind {
-    #[error("MissingStackValueError")]
-    MissingValue,
-
     #[error("OperationNotSupportedError: {op} is not supported {target}")]
     OperationNotSupported { target: String, op: String },
 

@@ -15,9 +15,7 @@ pub fn interpret(source: String, chunk: StoredChunk, vm: &mut VirtualMachine, de
     if debug {
         println!();
     }
+
     vm.exec()?;
-    if debug {
-        println!("Exited vm")
-    }
     Ok(())
 }

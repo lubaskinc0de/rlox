@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use anyhow::Error;
 
-use crate::alias::{StoredChunk, StoredNameSpace, StoredValue, VoidResult};
+use crate::alias::{StoredChunk, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
@@ -13,12 +13,12 @@ use crate::value::{Compare, Value};
 
 type ValueStack = Vec<StoredValue>;
 
-pub struct VirtualMachine {
+pub struct VirtualMachine<'ns> {
     chunk: StoredChunk,
     ip: usize, // instruction pointer
     debug_trace: bool,
     value_stack: ValueStack,
-    globals: StoredNameSpace,
+    globals: &'ns mut NameSpace,
 }
 
 macro_rules! calc {
@@ -33,14 +33,14 @@ macro_rules! calc {
     }};
 }
 
-impl VirtualMachine {
-    pub fn new(chunk: StoredChunk, debug_trace: bool) -> Self {
+impl<'ns> VirtualMachine<'ns> {
+    pub fn new(chunk: StoredChunk, globals: &'ns mut NameSpace, debug_trace: bool) -> Self {
         Self {
             chunk,
             ip: 0,
             debug_trace,
             value_stack: vec![],
-            globals: rc_refcell!(NameSpace::new()),
+            globals,
         }
     }
 
@@ -56,9 +56,6 @@ impl VirtualMachine {
                 let Some(instruction) = bchunk.get(self.ip) else {
                     return Ok(());
                 };
-                if self.debug_trace {
-                    println!("{instruction}");
-                }
                 instruction.kind().clone()
             };
 
@@ -120,7 +117,7 @@ impl VirtualMachine {
 
     fn peek(&self) -> Result<StoredValue, Error> {
         let Some(value) = self.value_stack.last().cloned() else {
-            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+            panic!("Missing stack value in peek()!");
         };
         Ok(value)
     }
@@ -135,7 +132,7 @@ impl VirtualMachine {
 
     fn pop_or_err(&mut self) -> Result<StoredValue, Error> {
         let Some(value) = self.value_stack.pop() else {
-            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+            panic!("Missing stack value in pop()!");
         };
         Ok(value)
     }
@@ -235,21 +232,21 @@ impl VirtualMachine {
     fn op_define_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
 
-        if self.globals.borrow_mut().get(&name).is_some() {
+        if self.globals.get(&name).is_some() {
             return Err(
                 self.runtime_error(RuntimeErrorKind::AlreadyDefinedVariable {
                     name: name.to_string(),
                 }),
             );
         }
-        self.globals.borrow_mut().insert(name, self.peek()?);
+        self.globals.insert(name, self.peek()?);
         self.pop_or_err()?;
         Ok(())
     }
 
     fn op_read_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
-        let Some(value) = self.globals.borrow().get(&name) else {
+        let Some(value) = self.globals.get(&name) else {
             return Err(self.runtime_error(RuntimeErrorKind::UndefinedVariable {
                 name: name.to_string(),
             }));
@@ -261,19 +258,19 @@ impl VirtualMachine {
     fn op_set_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
 
-        let Some(_) = self.globals.borrow().get(&name) else {
+        let Some(_) = self.globals.get(&name) else {
             return Err(self.runtime_error(RuntimeErrorKind::UndefinedVariable {
                 name: name.to_string(),
             }));
         };
 
-        self.globals.borrow_mut().insert(name, self.peek()?);
+        self.globals.insert(name, self.peek()?);
         Ok(())
     }
 
     fn op_read_local(&mut self, name_idx: usize) -> VoidResult {
         let Some(value) = self.value_stack.get(name_idx) else {
-            return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
+            panic!("Missing stack value in read local!");
         };
         let cloned_value = value.clone();
         self.push_stored_value(cloned_value);

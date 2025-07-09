@@ -18,7 +18,7 @@ mod token;
 mod value;
 mod vm;
 
-use crate::{chunk::Chunk, interpret::interpret, vm::VirtualMachine};
+use crate::{chunk::Chunk, interpret::interpret, namespace::NameSpace, vm::VirtualMachine};
 use anyhow::Error;
 use clap::Parser as CliParser;
 
@@ -51,8 +51,9 @@ fn repl(debug: bool) {
     println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
     println!("Enter program code:");
 
+    let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), debug);
+    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals, debug);
     loop {
         eprint!("> ");
         let mut prompt = String::new();
@@ -66,8 +67,9 @@ fn repl(debug: bool) {
 }
 
 fn run_source(content: String, debug: bool) -> Result<(), Error> {
+    let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), debug);
+    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals, debug);
     interpret(content, chunk, &mut vm, debug)
 }
 

@@ -1,13 +1,19 @@
 {
-    var a = "hello";
-    a;
-
-    {
-        var a = "world";
-        var b = 2 + 2;
-        a;
-    }
-    print "outer";
+    var b = 12;
+    print b;
 }
+{
+    var b = 17;
+    print b;
+    {
+        var b = 10;
+        print b;
 
-print "global";
+        {
+            print b;
+            b = 5;
+        }
+
+        print b;
+    }
+}

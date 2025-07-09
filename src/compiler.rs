@@ -41,7 +41,6 @@ pub struct Compiler {
     scanner: Scanner,
     current_chunk: Option<StoredChunk>,
     debug_mode: bool,
-    local_count: usize,
     scope_depth: usize,
     locals: Vec<Local>,
 }
@@ -330,7 +329,6 @@ impl Compiler {
             scanner,
             current_chunk: None,
             debug_mode,
-            local_count: 0,
             scope_depth: 0,
             locals: vec![],
         }
@@ -487,22 +485,27 @@ impl Compiler {
     }
 
     fn last_local(&mut self) -> Option<&mut Local> {
-        if self.local_count == 0 {
+        let local_count = self.local_count();
+        if local_count == 0 {
             return None;
         }
-        self.locals.get_mut(self.local_count - 1)
+        self.locals.get_mut(local_count - 1)
     }
 
     fn begin_scope(&mut self) {
         self.scope_depth += 1;
     }
 
+    fn local_count(&self) -> usize {
+        self.locals.len()
+    }
+
     fn end_scope(&mut self) {
         self.scope_depth -= 1;
-        while self.local_count > 0 && self.last_local().unwrap().depth > self.scope_depth {
+        while self.local_count() > 0 && self.last_local().unwrap().depth > self.scope_depth {
             // removing locals of exited scope
             self.emit_op_code(OpCodeKind::Pop);
-            self.local_count -= 1;
+            self.locals.pop();
         }
     }
 
@@ -590,7 +593,6 @@ impl Compiler {
     fn add_local(&mut self, name: Rc<Token>) {
         let local = Local::new(name, self.scope_depth, false);
         self.locals.push(local);
-        self.local_count += 1;
     }
 
     fn define_global(&mut self, name_idx: usize) {
@@ -638,18 +640,16 @@ impl Compiler {
         if self.is_global_scope() {
             return Ok(None);
         }
-        let mut i = (self.local_count - 1) as isize;
-
-        while i >= 0 {
-            let local = &self.locals[i as usize];
+        
+        for i in (0..self.local_count()).rev() {
+            let local = &self.locals[i];
             if local.name.literal.as_ref().is_some_and(|x| x == name) {
                 if !local.is_initialized {
                     return Err(self
                         .error("Cannot read local variable in their own initializer".to_owned()));
                 }
-                return Ok(Some(self.locals.len() - 1 - i as usize));
+                return Ok(Some(i));
             }
-            i -= 1;
         }
         Ok(None)
     }
