@@ -1,24 +1,18 @@
-use std::{any::Any, fmt::Display};
+use std::{any::Any, fmt::Display, rc::Rc};
 
 use crate::{
-    alias::{DynObject, StoredValue},
-    cast,
-    errors::RuntimeErrorKind,
-    isinstance,
-    object::{Object, ResultRE},
-    rc_refcell,
-    value::{Compare, Value},
+    alias::{DynObject, StoredValue}, cast, errors::RuntimeErrorKind, isinstance, object::{Object, ResultRE}, rc_refcell, token::Literal, value::{Compare, Value}
 };
 
 pub const STRING_TYPE: &str = "string";
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct StringObject {
-    pub value: String,
+    pub value: Literal,
 }
 
 impl StringObject {
-    pub fn new(value: String) -> Self {
+    pub fn new(value: Literal) -> Self {
         Self { value }
     }
 }
@@ -60,7 +54,7 @@ impl Object for StringObject {
         concatenated_string.push_str(&as_string.value);
 
         Ok(rc_refcell!(Value::Object(Box::new(StringObject::new(
-            concatenated_string
+            Rc::new(concatenated_string)
         )))))
     }
 }

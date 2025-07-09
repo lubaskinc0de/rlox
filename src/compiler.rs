@@ -8,7 +8,7 @@ use crate::{
     parser::Parser,
     rc_refcell,
     scanner::Scanner,
-    token::{Token, TokenType},
+    token::{Literal, Token, TokenType},
     value::Value,
 };
 
@@ -444,7 +444,7 @@ impl Compiler {
         self.previous().unwrap().line
     }
 
-    fn previous_string_literal(&self) -> Result<String, Error> {
+    fn previous_string_literal(&self) -> Result<Literal, Error> {
         if self.previous().unwrap().token_type != TokenType::IDENTIFIER {
             return Err(self.error("Expected identifier".to_owned()));
         }
@@ -556,8 +556,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn identifier_constant(&mut self, literal: String) -> usize {
-        self.make_const(rc_refcell!(Value::Identifier(Rc::new(literal),)))
+    fn identifier_constant(&mut self, literal: Literal) -> usize {
+        self.make_const(rc_refcell!(Value::Identifier(literal,)))
     }
 
     fn parse_variable_name(&mut self, message: String) -> Result<usize, Error> {
@@ -607,7 +607,7 @@ impl Compiler {
 
     #[allow(clippy::unnecessary_unwrap)]
     #[allow(clippy::needless_late_init)]
-    fn named_variable(&mut self, name: String, can_assign: bool) -> VoidResult {
+    fn named_variable(&mut self, name: Literal, can_assign: bool) -> VoidResult {
         let get_op: OpCodeKind;
         let set_op: OpCodeKind;
 
@@ -634,7 +634,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn resolve_local(&self, name: &str) -> Result<Option<usize>, Error> {
+    fn resolve_local(&self, name: &Literal) -> Result<Option<usize>, Error> {
         if self.is_global_scope() {
             return Ok(None);
         }

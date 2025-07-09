@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, rc::Rc};
+
+pub type Literal = Rc<String>;
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 #[allow(clippy::upper_case_acronyms)]
@@ -52,7 +54,7 @@ pub struct Token {
     pub line: usize,
     pub start: usize,
     pub length: usize,
-    pub literal: Option<String>,
+    pub literal: Option<Literal>,
     pub message: Option<String>,
 }
 
@@ -62,7 +64,7 @@ impl Token {
         line: usize,
         start: usize,
         length: usize,
-        literal: Option<String>,
+        literal: Option<Literal>,
         message: Option<String>,
     ) -> Self {
         match token_type {

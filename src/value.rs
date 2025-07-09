@@ -1,13 +1,13 @@
-use std::{fmt::Display, rc::Rc};
+use std::fmt::Display;
 
-use crate::{alias::DynObject, object::ResultRE};
+use crate::{alias::DynObject, object::ResultRE, token::Literal};
 
 #[derive(Debug)]
 pub enum Value {
     Float(f64),
     Boolean(bool),
     Null,
-    Identifier(Rc<String>),
+    Identifier(Literal),
     Object(DynObject),
 }
 

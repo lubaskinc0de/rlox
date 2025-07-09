@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::token::{Token, TokenType};
 
@@ -121,7 +121,7 @@ impl Scanner {
             self.line,
             self.start,
             self.length(),
-            Some(literal),
+            Some(Rc::new(literal)),
             None,
         )
     }
