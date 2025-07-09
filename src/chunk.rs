@@ -104,10 +104,6 @@ impl Chunk {
         self.constants.len() - 1 // index of const
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.code.is_empty()
-    }
-
     pub fn get(&self, index: usize) -> Option<&OpCode> {
         self.code.get(index)
     }

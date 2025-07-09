@@ -2,18 +2,15 @@ use std::rc::Rc;
 
 use anyhow::Error;
 
-use crate::{chunk::Chunk, compiler::Compiler, rc_refcell, vm::VirtualMachine};
+use crate::{alias::StoredChunk, compiler::Compiler, vm::VirtualMachine};
 
-pub fn interpret(source: String, debug: bool) -> Result<(), Error> {
-    let chunk = rc_refcell!(Chunk::new());
+pub fn interpret(source: String, chunk: StoredChunk, vm: &mut VirtualMachine, debug: bool) -> Result<(), Error> {
     let mut compiler = Compiler::from_source(source, debug);
 
     if debug {
         println!("Compiling...");
     }
     compiler.compile(Rc::clone(&chunk))?;
-
-    let mut vm = VirtualMachine::new(chunk, debug)?;
 
     if debug {
         println!();

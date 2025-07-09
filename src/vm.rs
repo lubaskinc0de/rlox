@@ -6,7 +6,7 @@ use crate::alias::{StoredChunk, StoredNameSpace, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeErrorKind;
-use crate::errors::{EmptyChunkError, RuntimeError};
+use crate::errors::RuntimeError;
 use crate::namespace::NameSpace;
 use crate::rc_refcell;
 use crate::value::{Compare, Value};
@@ -34,17 +34,14 @@ macro_rules! calc {
 }
 
 impl VirtualMachine {
-    pub fn new(chunk: StoredChunk, debug_trace: bool) -> Result<Self, Error> {
-        if chunk.borrow().is_empty() {
-            return Err(EmptyChunkError {}.into());
-        }
-        Ok(Self {
+    pub fn new(chunk: StoredChunk, debug_trace: bool) -> Self {
+        Self {
             chunk,
             ip: 0,
             debug_trace,
             value_stack: vec![],
             globals: rc_refcell!(NameSpace::new()),
-        })
+        }
     }
 
     pub fn exec(&mut self) -> VoidResult {

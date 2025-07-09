@@ -18,10 +18,6 @@ pub enum RuntimeErrorKind {
     TypeError { expected: String, provided: String },
 }
 
-#[derive(Debug, Error)]
-#[error("Empty chunk error")]
-pub struct EmptyChunkError {}
-
 #[derive(Error, Debug)]
 #[error("Error while parsing")]
 pub struct ParsingError {}

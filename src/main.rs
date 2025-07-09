@@ -18,7 +18,7 @@ mod token;
 mod value;
 mod vm;
 
-use crate::interpret::interpret;
+use crate::{chunk::Chunk, interpret::interpret, vm::VirtualMachine};
 use anyhow::Error;
 use clap::Parser as CliParser;
 
@@ -50,20 +50,25 @@ fn read_file_to_string(file_name: &str) -> String {
 fn repl(debug: bool) {
     println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
     println!("Enter program code:");
+
+    let chunk = rc_refcell!(Chunk::new());
+    let mut vm = VirtualMachine::new(chunk.clone(), debug);
     loop {
         eprint!("> ");
         let mut prompt = String::new();
         io::stdin()
             .read_line(&mut prompt)
             .expect("Failed to read input");
-        if let Err(e) = interpret(prompt, debug) {
+        if let Err(e) = interpret(prompt, chunk.clone(), &mut vm, debug) {
             println!("{e}")
         };
     }
 }
 
 fn run_source(content: String, debug: bool) -> Result<(), Error> {
-    interpret(content, debug)
+    let chunk = rc_refcell!(Chunk::new());
+    let mut vm = VirtualMachine::new(chunk.clone(), debug);
+    interpret(content, chunk, &mut vm, debug)
 }
 
 fn main() {
