@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use anyhow::Error;
@@ -12,7 +11,7 @@ use crate::namespace::NameSpace;
 use crate::rc_refcell;
 use crate::value::{Compare, Value};
 
-type ValueStack = Rc<RefCell<Vec<StoredValue>>>;
+type ValueStack = Vec<StoredValue>;
 
 pub struct VirtualMachine {
     chunk: StoredChunk,
@@ -43,7 +42,7 @@ impl VirtualMachine {
             chunk,
             ip: 0,
             debug_trace,
-            value_stack: rc_refcell!(vec![]),
+            value_stack: vec![],
             globals: rc_refcell!(NameSpace::new()),
         })
     }
@@ -55,18 +54,24 @@ impl VirtualMachine {
             println!()
         }
         loop {
-            let bchunk = self.chunk.borrow();
-            let Some(instruction) = bchunk.get(self.ip) else {
-                return Ok(());
+            let kind = {
+                let bchunk = self.chunk.borrow();
+                let Some(instruction) = bchunk.get(self.ip) else {
+                    return Ok(());
+                };
+                if self.debug_trace {
+                    println!("{instruction}");
+                }
+                instruction.kind().clone()
             };
 
             if self.debug_trace {
-                println!("{instruction}");
+                println!("{kind}");
             }
 
-            match instruction.kind() {
+            match kind {
                 OpCodeKind::Const { const_idx } => {
-                    self.op_const(*const_idx);
+                    self.op_const(const_idx);
                 }
                 OpCodeKind::Negate => self.op_negate()?,
                 OpCodeKind::Add => self.bin_op(BinOpKind::Add)?,
@@ -93,11 +98,11 @@ impl VirtualMachine {
                 OpCodeKind::Pop => {
                     self.pop_or_err()?;
                 }
-                OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(*name_idx)?,
-                OpCodeKind::ReadGlobal { name_idx } => self.op_read_global(*name_idx)?,
-                OpCodeKind::SetGlobal { name_idx } => self.op_set_global(*name_idx)?,
-                OpCodeKind::ReadLocal { name_idx } => self.op_read_local(*name_idx)?,
-                OpCodeKind::SetLocal { name_idx } => self.op_set_local(*name_idx)?,
+                OpCodeKind::DefineGlobal { name_idx } => self.op_define_global(name_idx)?,
+                OpCodeKind::ReadGlobal { name_idx } => self.op_read_global(name_idx)?,
+                OpCodeKind::SetGlobal { name_idx } => self.op_set_global(name_idx)?,
+                OpCodeKind::ReadLocal { name_idx } => self.op_read_local(name_idx)?,
+                OpCodeKind::SetLocal { name_idx } => self.op_set_local(name_idx)?,
             }
             self.ip += 1;
         }
@@ -117,22 +122,22 @@ impl VirtualMachine {
     }
 
     fn peek(&self) -> Result<StoredValue, Error> {
-        let Some(value) = self.value_stack.borrow().last().cloned() else {
+        let Some(value) = self.value_stack.last().cloned() else {
             return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
         };
         Ok(value)
     }
 
-    fn push_value(&self, value: Value) {
-        self.value_stack.borrow_mut().push(rc_refcell!(value));
+    fn push_value(&mut self, value: Value) {
+        self.value_stack.push(rc_refcell!(value));
     }
 
-    fn push_stored_value(&self, value: StoredValue) {
-        self.value_stack.borrow_mut().push(value);
+    fn push_stored_value(&mut self, value: StoredValue) {
+        self.value_stack.push(value);
     }
 
-    fn pop_or_err(&self) -> Result<StoredValue, Error> {
-        let Some(value) = self.value_stack.borrow_mut().pop() else {
+    fn pop_or_err(&mut self) -> Result<StoredValue, Error> {
+        let Some(value) = self.value_stack.pop() else {
             return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
         };
         Ok(value)
@@ -145,7 +150,7 @@ impl VirtualMachine {
         Ok(result.unwrap())
     }
 
-    fn bin_op(&self, kind: BinOpKind) -> VoidResult {
+    fn bin_op(&mut self, kind: BinOpKind) -> VoidResult {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
 
@@ -179,16 +184,19 @@ impl VirtualMachine {
         }
     }
 
-    fn op_const(&self, const_idx: usize) {
-        let bchunk = self.chunk.borrow();
-        let const_value = bchunk.get_const(const_idx).unwrap();
-        if self.debug_trace {
-            println!("Pushed const: {}", const_value.borrow());
-        }
-        self.push_stored_value(const_value.clone());
+    fn op_const(&mut self, const_idx: usize) {
+        let cloned_value = {
+            let bchunk = self.chunk.borrow();
+            let const_value = bchunk.get_const(const_idx).unwrap();
+            if self.debug_trace {
+                println!("Pushed const: {}", const_value.borrow());
+            }
+            const_value.clone()
+        };
+        self.push_stored_value(cloned_value);
     }
 
-    fn op_negate(&self) -> VoidResult {
+    fn op_negate(&mut self) -> VoidResult {
         let peek = self.peek()?;
         if !peek.borrow().support_negation() {
             return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
@@ -207,7 +215,7 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn op_cmp(&self, expected: Compare) -> VoidResult {
+    fn op_cmp(&mut self, expected: Compare) -> VoidResult {
         let b = self.pop_or_err()?;
         let a = self.pop_or_err()?;
 
@@ -221,13 +229,13 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn op_print(&self) -> VoidResult {
+    fn op_print(&mut self) -> VoidResult {
         let value = self.pop_or_err()?;
         println!("{}", value.borrow());
         Ok(())
     }
 
-    fn op_define_global(&self, name_idx: usize) -> VoidResult {
+    fn op_define_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
 
         if self.globals.borrow_mut().get(&name).is_some() {
@@ -242,7 +250,7 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn op_read_global(&self, name_idx: usize) -> VoidResult {
+    fn op_read_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
         let Some(value) = self.globals.borrow().get(&name) else {
             return Err(self.runtime_error(RuntimeErrorKind::UndefinedVariable {
@@ -253,7 +261,7 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn op_set_global(&self, name_idx: usize) -> VoidResult {
+    fn op_set_global(&mut self, name_idx: usize) -> VoidResult {
         let name = self.read_identifier_const(name_idx);
 
         let Some(_) = self.globals.borrow().get(&name) else {
@@ -266,20 +274,17 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn op_read_local(&self, name_idx: usize) -> VoidResult {
-        let bwed = self.value_stack.borrow();
-        let Some(value) = bwed.get(name_idx) else {
+    fn op_read_local(&mut self, name_idx: usize) -> VoidResult {
+        let Some(value) = self.value_stack.get(name_idx) else {
             return Err(self.runtime_error(RuntimeErrorKind::MissingValue));
         };
         let cloned_value = value.clone();
-        drop(bwed);
-
         self.push_stored_value(cloned_value);
         Ok(())
     }
 
-    fn op_set_local(&self, name_idx: usize) -> VoidResult {
-        self.value_stack.borrow_mut()[name_idx] = self.peek()?;
+    fn op_set_local(&mut self, name_idx: usize) -> VoidResult {
+        self.value_stack[name_idx] = self.peek()?;
         Ok(())
     }
 }

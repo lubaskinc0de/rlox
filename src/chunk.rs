@@ -4,7 +4,7 @@ use crate::alias::StoredValue;
 
 const STACK_CAPACITY: usize = 256;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum OpCodeKind {
     Const { const_idx: usize },
     Negate,
