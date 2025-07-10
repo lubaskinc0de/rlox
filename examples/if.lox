@@ -1,0 +1,10 @@
+if (4 == 4) {
+    print "yes";
+    print "condition is yes";
+} else {
+    print "no";
+    print "condition is falsey";
+}
+
+print "hello!";
+print "hi";

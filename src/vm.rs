@@ -5,8 +5,8 @@ use anyhow::Error;
 use crate::alias::{StoredChunk, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
-use crate::errors::RuntimeErrorKind;
 use crate::errors::RuntimeError;
+use crate::errors::RuntimeErrorKind;
 use crate::namespace::NameSpace;
 use crate::rc_refcell;
 use crate::value::{Compare, Value};
@@ -100,8 +100,12 @@ impl<'ns> VirtualMachine<'ns> {
                 OpCodeKind::SetLocal { name_idx } => self.op_set_local(name_idx)?,
                 OpCodeKind::JumpIfFalse { offset } => self.op_jump_if_false(offset)?,
                 OpCodeKind::Jump { offset } => self.op_jump(offset),
+                OpCodeKind::Loop { offset } => self.op_loop(offset),
             }
-            self.ip += 1;
+
+            if !matches!(kind, OpCodeKind::Loop { .. }) {
+                self.ip += 1;
+            }
         }
     }
 
@@ -294,5 +298,9 @@ impl<'ns> VirtualMachine<'ns> {
 
     fn op_jump(&mut self, offset: usize) {
         self.ip += offset;
+    }
+
+    fn op_loop(&mut self, offset: usize) {
+        self.ip -= offset;
     }
 }

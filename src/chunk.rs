@@ -28,6 +28,7 @@ pub enum OpCodeKind {
     SetLocal { name_idx: usize },
     JumpIfFalse { offset: usize },
     Jump { offset: usize },
+    Loop { offset: usize},
 }
 
 impl Display for OpCodeKind {
@@ -55,6 +56,7 @@ impl Display for OpCodeKind {
             OpCodeKind::SetLocal { name_idx } => ("OP_SET_LOCAL", format!("{name_idx}")),
             OpCodeKind::JumpIfFalse { offset } => ("OP_JUMP_IF_FALSE", format!("{offset}")),
             OpCodeKind::Jump { offset } => ("OP_JUMP", format!("{offset}")),
+            OpCodeKind::Loop { offset } => ("OP_LOOP", format!("{offset}")),
         };
 
         write!(f, "{name:<12} {args:<6}")

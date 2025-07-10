@@ -89,7 +89,8 @@ impl Clone for Value {
 }
 
 impl Drop for Value {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+    }
 }
 
 impl PartialEq for Value {

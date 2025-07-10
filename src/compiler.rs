@@ -213,8 +213,8 @@ const RULES: [ParseRule; 41] = [
     /* TOKEN_AND */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::and),
+        precedence: And,
     },
     /* TOKEN_CLASS */
     ParseRule {
@@ -261,8 +261,8 @@ const RULES: [ParseRule; 41] = [
     /* TOKEN_OR */
     ParseRule {
         prefix: None,
-        infix: None,
-        precedence: NONE,
+        infix: Some(Compiler::or),
+        precedence: Or,
     },
     /* TOKEN_PRINT */
     ParseRule {
@@ -481,6 +481,8 @@ impl Compiler {
             Ok(())
         } else if self.matches(&TokenType::IF)? {
             self.if_statement()
+        } else if self.matches(&TokenType::WHILE)? {
+            self.while_statement()
         } else {
             self.expr_statement()
         }
@@ -685,6 +687,11 @@ impl Compiler {
         }
     }
 
+    fn emit_loop(&mut self, loop_start: usize) {
+        let offset = self.current_chunk.as_ref().unwrap().borrow().len() - loop_start;
+        self.emit_op_code(OpCodeKind::Loop { offset });
+    }
+
     fn if_statement(&mut self) -> VoidResult {
         self.consume(TokenType::LeftParen, "Expected '(' after if".to_owned())?;
         self.expression()?;
@@ -707,6 +714,26 @@ impl Compiler {
         }
 
         self.patch_jump(else_jump);
+        Ok(())
+    }
+
+    fn while_statement(&mut self) -> VoidResult {
+        let loop_start = self.current_chunk.as_ref().unwrap().borrow().len();
+        self.consume(TokenType::LeftParen, "Expected '(' after while".to_owned())?;
+        self.expression()?;
+        self.consume(
+            TokenType::RightParen,
+            "Expected ')' after while condition".to_owned(),
+        )?;
+
+        let exit_jump = self.emit_jump(OpCodeKind::JumpIfFalse { offset: 0 });
+        self.emit_op_code(OpCodeKind::Pop);
+        self.statement()?;
+
+        self.emit_loop(loop_start);
+
+        self.patch_jump(exit_jump);
+        self.emit_op_code(OpCodeKind::Pop);
         Ok(())
     }
 
@@ -857,6 +884,30 @@ impl Compiler {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[allow(unused_variables)]
+    fn and(&mut self, can_assign: bool) -> VoidResult {
+        let end_jump = self.emit_jump(OpCodeKind::JumpIfFalse { offset: 0 });
+        self.emit_op_code(OpCodeKind::Pop);
+
+        self.parse_precedence(And)?;
+
+        self.patch_jump(end_jump);
+        Ok(())
+    }
+
+    #[allow(unused_variables)]
+    fn or(&mut self, can_assign: bool) -> VoidResult {
+        let else_jump = self.emit_jump(OpCodeKind::JumpIfFalse { offset: 0 });
+        let end_jump = self.emit_jump(OpCodeKind::Jump { offset: 0 });
+
+        self.patch_jump(else_jump);
+        self.emit_op_code(OpCodeKind::Pop);
+
+        self.parse_precedence(Or)?;
+        self.patch_jump(end_jump);
+        Ok(())
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> VoidResult {
