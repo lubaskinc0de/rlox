@@ -483,6 +483,8 @@ impl Compiler {
             self.if_statement()
         } else if self.matches(&TokenType::WHILE)? {
             self.while_statement()
+        } else if self.matches(&TokenType::FOR)? {
+            self.for_statement()
         } else {
             self.expr_statement()
         }
@@ -734,6 +736,53 @@ impl Compiler {
 
         self.patch_jump(exit_jump);
         self.emit_op_code(OpCodeKind::Pop);
+        Ok(())
+    }
+
+    fn for_statement(&mut self) -> VoidResult {
+        self.begin_scope();
+        self.consume(TokenType::LeftParen, "Expected '(' after for".to_owned())?;
+
+        if self.matches(&TokenType::SEMICOLON)? {
+        } else if self.matches(&TokenType::VAR)? {
+            self.var_statement()?;
+        } else {
+            self.expr_statement()?;
+        }
+
+        let mut loop_start = self.current_chunk.as_ref().unwrap().borrow().len();
+        let mut exit_jump: Option<usize> = None;
+
+        if !self.matches(&TokenType::SEMICOLON)? {
+            self.expression()?;
+            self.consume(TokenType::SEMICOLON, "Expected ';' after for condition".to_owned())?;
+
+            exit_jump = Some(self.emit_jump(OpCodeKind::JumpIfFalse { offset: 0 }));
+            self.emit_op_code(OpCodeKind::Pop);
+        }
+
+        if !self.matches(&TokenType::RightParen)? {
+            let body_jump = self.emit_jump(OpCodeKind::Jump { offset: 0 });
+            let increment_start = self.current_chunk.as_ref().unwrap().borrow().len();
+
+            self.expression()?;
+            self.emit_op_code(OpCodeKind::Pop);
+            self.consume(TokenType::RightParen, "Expected ')' after for clauses".to_owned())?;
+
+            self.emit_loop(loop_start);
+            loop_start = increment_start;
+            self.patch_jump(body_jump);
+        }
+
+        self.statement()?;
+        self.emit_loop(loop_start);
+
+        if exit_jump.is_some() {
+            self.patch_jump(exit_jump.unwrap());
+            self.emit_op_code(OpCodeKind::Pop);
+        }
+
+        self.end_scope();
         Ok(())
     }
 
