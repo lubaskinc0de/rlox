@@ -28,7 +28,7 @@ pub enum OpCodeKind {
     SetLocal { name_idx: usize },
     JumpIfFalse { offset: usize },
     Jump { offset: usize },
-    Loop { offset: usize},
+    Loop { offset: usize },
 }
 
 impl Display for OpCodeKind {
@@ -124,6 +124,10 @@ impl Chunk {
 
     pub fn len(&self) -> usize {
         self.code.len()
+    }
+
+    pub fn clear_code(&mut self) {
+        self.code.clear();
     }
 }
 

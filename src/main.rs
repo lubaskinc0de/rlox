@@ -1,3 +1,4 @@
+use log::debug;
 use std::{
     fs::File,
     io::{self, Read},
@@ -34,8 +35,6 @@ struct CliArgs {
     #[arg(short, long, default_value_t = true)]
     repl: bool,
     file_name: Option<String>,
-    #[arg(short, long, default_value_t = false)]
-    debug: bool,
 }
 
 fn read_file_to_string(file_name: &str) -> String {
@@ -47,46 +46,54 @@ fn read_file_to_string(file_name: &str) -> String {
     buf
 }
 
-fn repl(debug: bool) {
+fn repl() {
     println!("Running RLox, mode: REPL, author: lubaskinc0de, current version: {VERSION}");
     println!("Enter program code:");
 
     let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals, debug);
+    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals);
+
+    debug!("REPL Started");
     loop {
+        chunk.borrow_mut().clear_code();
+        vm.reset_ip();
+
         eprint!("> ");
         let mut prompt = String::new();
         io::stdin()
             .read_line(&mut prompt)
             .expect("Failed to read input");
-        if let Err(e) = interpret(prompt, chunk.clone(), &mut vm, debug) {
+        if let Err(e) = interpret(prompt, chunk.clone(), &mut vm) {
             println!("{e}")
         };
     }
 }
 
-fn run_source(content: String, debug: bool) -> Result<(), Error> {
+fn run_source(content: String) -> Result<(), Error> {
     let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals, debug);
-    interpret(content, chunk, &mut vm, debug)
+    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals);
+    interpret(content, chunk, &mut vm)
 }
 
 fn main() {
+    env_logger::init();
+    debug!("RLOX Started");
+
     let cli = CliArgs::parse();
     let file_name = cli.file_name;
-    let debug = cli.debug;
 
     let result = match (cli.repl, file_name) {
         (true, None) => {
-            repl(debug);
+            repl();
             Ok(())
         }
         (false, None) => panic!("Pass the file name or run in REPL mode"),
         (false, Some(filename)) | (true, Some(filename)) => {
             let content = read_file_to_string(&filename);
-            run_source(content, debug)
+            debug!("Read source from file");
+            run_source(content)
         }
     };
 

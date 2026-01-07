@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use log::debug;
 
 use crate::{
     alias::{StoredChunk, StoredValue, VoidResult},
@@ -40,7 +41,6 @@ pub struct Compiler {
     parser: Parser,
     scanner: Scanner,
     current_chunk: Option<StoredChunk>,
-    debug_mode: bool,
     scope_depth: usize,
     locals: Vec<Local>,
 }
@@ -321,14 +321,13 @@ const RULES: [ParseRule; 41] = [
 ];
 
 impl Compiler {
-    pub fn from_source(source: String, debug_mode: bool) -> Self {
+    pub fn from_source(source: String) -> Self {
         let scanner = Scanner::new(source);
         let parser = Parser::new();
         Self {
             parser,
             scanner,
             current_chunk: None,
-            debug_mode,
             scope_depth: 0,
             locals: vec![],
         }
@@ -373,9 +372,7 @@ impl Compiler {
         };
 
         self.parser.current = Some(Rc::new(new_token));
-        if self.debug_mode {
-            println!("Called advance(), {}", self.debug_string(),);
-        }
+        debug!("Called advance(), {}", self.debug_string(),);
 
         match self.current().unwrap().token_type {
             TokenType::Error => Err(self.error_at_current(message.unwrap())),
@@ -414,9 +411,7 @@ impl Compiler {
     }
 
     fn emit_op_code(&self, kind: OpCodeKind) {
-        if self.debug_mode {
-            println!("Emitted opcode: {kind}")
-        }
+        debug!("Emitted opcode: {kind}");
         self.current_chunk
             .as_ref()
             .unwrap()
@@ -787,9 +782,7 @@ impl Compiler {
     }
 
     fn expression(&mut self) -> VoidResult {
-        if self.debug_mode {
-            println!("Called expression(), {}", self.debug_string());
-        }
+        debug!("Called expression(), {}", self.debug_string());
         self.parse_precedence(Precedence::Assignment)
     }
 
@@ -804,18 +797,14 @@ impl Compiler {
                 .parse::<f64>()
                 .unwrap(),
         );
-        if self.debug_mode {
-            println!("Called number() for {value}");
-        }
+        debug!("Called number() for {value}");
         self.emit_const(rc_refcell!(value));
         Ok(())
     }
 
     #[allow(unused_variables)]
     fn literal(&mut self, can_assign: bool) -> VoidResult {
-        if self.debug_mode {
-            println!("Called literal()");
-        }
+        debug!("Called literal()");
         self.emit_op_code(match self.previous().unwrap().token_type {
             TokenType::NIL => OpCodeKind::Null,
             TokenType::FALSE => OpCodeKind::False,
@@ -827,9 +816,7 @@ impl Compiler {
 
     #[allow(unused_variables)]
     fn string(&mut self, can_assign: bool) -> VoidResult {
-        if self.debug_mode {
-            println!("Called string()");
-        };
+        debug!("Called string()");
         self.emit_const(rc_refcell!(Value::Object(Box::new(StringObject::new(
             self.previous().unwrap().literal.clone().unwrap()
         )))));
@@ -845,9 +832,7 @@ impl Compiler {
     #[allow(unused_variables)]
     fn unary(&mut self, can_assign: bool) -> VoidResult {
         let op_type = &self.previous().unwrap().token_type.clone();
-        if self.debug_mode {
-            println!("Called unary for op {:?}, {}", op_type, self.debug_string(),)
-        }
+        debug!("Called unary for op {:?}, {}", op_type, self.debug_string());
 
         self.parse_precedence(Precedence::Unary)?;
 
@@ -876,14 +861,12 @@ impl Compiler {
         let rule = self.get_rule(op_type);
         let next_precedence = self.next_precedence(rule.precedence);
 
-        if self.debug_mode {
-            println!(
-                "Called binary {:?}, {}, next precedence = {:?}",
-                op_type,
-                self.debug_string(),
-                next_precedence
-            )
-        }
+        debug!(
+            "Called binary {:?}, {}, next precedence = {:?}",
+            op_type,
+            self.debug_string(),
+            next_precedence
+        );
 
         self.parse_precedence(next_precedence)?;
 
@@ -960,13 +943,12 @@ impl Compiler {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) -> VoidResult {
-        if self.debug_mode {
-            println!(
-                "Called parse_precedence() with precedence = {:?}, {}",
-                precedence,
-                self.debug_string(),
-            )
-        }
+        debug!(
+            "Called parse_precedence() with precedence = {:?}, {}",
+            precedence,
+            self.debug_string(),
+        );
+        
         self.advance()?;
         let Some(prefix_rule) = self.get_rule(&self.previous().unwrap().token_type).prefix else {
             return Err(self.error("Expected expression".to_owned()));
@@ -979,8 +961,8 @@ impl Compiler {
             .get_rule(&self.current().unwrap().token_type)
             .precedence as usize;
 
-        if (precedence as usize > current_token_precedence) && self.debug_mode {
-            println!(
+        if precedence as usize > current_token_precedence {
+            debug!(
                 "Skipping infix rule loop, {}, precedence: {:?}({}), current precedence: {:?}({})",
                 self.debug_string(),
                 precedence,
@@ -997,25 +979,23 @@ impl Compiler {
                 .get_rule(&self.current().unwrap().token_type)
                 .precedence as usize)
         {
-            if self.debug_mode {
-                println!(
-                    "Inside infix rule loop, precedence: {:?}({}), current precedence: {:?}({}), {}",
-                    precedence,
-                    precedence as usize,
-                    self.get_rule(&self.current().unwrap().token_type)
-                        .precedence,
-                    self.get_rule(&self.current().unwrap().token_type)
-                        .precedence as usize,
-                    self.debug_string()
-                )
-            }
+            debug!(
+                "Inside infix rule loop, precedence: {:?}({}), current precedence: {:?}({}), {}",
+                precedence,
+                precedence as usize,
+                self.get_rule(&self.current().unwrap().token_type)
+                    .precedence,
+                self.get_rule(&self.current().unwrap().token_type)
+                    .precedence as usize,
+                self.debug_string()
+            );
+            
             self.advance()?;
             let Some(infix_rule) = self.get_rule(&self.previous().unwrap().token_type).infix else {
                 continue;
             };
-            if self.debug_mode {
-                println!("Calling infix rule for {}", self.previous().unwrap())
-            }
+            
+            debug!("Calling infix rule for {}", self.previous().unwrap());
             infix_rule(self, can_assign)?;
         };
 

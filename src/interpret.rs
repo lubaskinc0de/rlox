@@ -1,20 +1,15 @@
+use log::debug;
 use std::rc::Rc;
 
 use anyhow::Error;
 
 use crate::{alias::StoredChunk, compiler::Compiler, vm::VirtualMachine};
 
-pub fn interpret(source: String, chunk: StoredChunk, vm: &mut VirtualMachine, debug: bool) -> Result<(), Error> {
-    let mut compiler = Compiler::from_source(source, debug);
-
-    if debug {
-        println!("Compiling...");
-    }
+pub fn interpret(source: String, chunk: StoredChunk, vm: &mut VirtualMachine) -> Result<(), Error> {
+    debug!("Interpreting source..");
+    let mut compiler = Compiler::from_source(source);
+    debug!("Begin compilation\n");
     compiler.compile(Rc::clone(&chunk))?;
-
-    if debug {
-        println!();
-    }
 
     vm.exec()?;
     Ok(())

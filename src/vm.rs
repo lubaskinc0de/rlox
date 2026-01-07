@@ -1,6 +1,6 @@
-use std::rc::Rc;
-
 use anyhow::Error;
+use log::debug;
+use std::rc::Rc;
 
 use crate::alias::{StoredChunk, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
@@ -16,7 +16,6 @@ type ValueStack = Vec<StoredValue>;
 pub struct VirtualMachine<'ns> {
     chunk: StoredChunk,
     ip: usize, // instruction pointer
-    debug_trace: bool,
     value_stack: ValueStack,
     globals: &'ns mut NameSpace,
 }
@@ -34,23 +33,24 @@ macro_rules! calc {
 }
 
 impl<'ns> VirtualMachine<'ns> {
-    pub fn new(chunk: StoredChunk, globals: &'ns mut NameSpace, debug_trace: bool) -> Self {
+    pub fn new(chunk: StoredChunk, globals: &'ns mut NameSpace) -> Self {
         Self {
             chunk,
             ip: 0,
-            debug_trace,
             value_stack: vec![],
             globals,
         }
     }
 
+    pub fn reset_ip(&mut self) {
+        self.ip = 0;
+    }
+
     pub fn exec(&mut self) -> VoidResult {
-        if self.debug_trace {
-            println!("Executing this chunk:");
-            println!("{}", self.chunk.borrow());
-            println!("Chunk constants: {:?}", self.chunk.borrow().constants);
-            println!()
-        }
+        debug!("Executing chunk:");
+        debug!("\n{}", self.chunk.borrow());
+        debug!("Chunk constants: {:?}", self.chunk.borrow().constants);
+
         loop {
             let kind = {
                 let bchunk = self.chunk.borrow();
@@ -60,9 +60,7 @@ impl<'ns> VirtualMachine<'ns> {
                 instruction.kind().clone()
             };
 
-            if self.debug_trace {
-                println!("{kind}");
-            }
+            debug!("Executing opcode: {kind}");
 
             match kind {
                 OpCodeKind::Const { const_idx } => {
@@ -109,7 +107,10 @@ impl<'ns> VirtualMachine<'ns> {
         }
     }
 
-    fn runtime_error(&self, kind: RuntimeErrorKind) -> Error {
+    fn runtime_error(&mut self, kind: RuntimeErrorKind) -> Error {
+        if self.ip == 0 {
+            return RuntimeError { kind, line: 0 }.into();
+        };
         let bchunk = self.chunk.borrow();
         let Some(prev_instruction) = bchunk.get(self.ip - 1) else {
             panic!("Cannot get previous instruction");
@@ -144,7 +145,7 @@ impl<'ns> VirtualMachine<'ns> {
         Ok(value)
     }
 
-    fn as_vm_result<T>(&self, result: Result<T, RuntimeErrorKind>) -> Result<T, Error> {
+    fn as_vm_result<T>(&mut self, result: Result<T, RuntimeErrorKind>) -> Result<T, Error> {
         if let Err(error) = result {
             return Err(self.runtime_error(error));
         }
@@ -189,9 +190,7 @@ impl<'ns> VirtualMachine<'ns> {
         let cloned_value = {
             let bchunk = self.chunk.borrow();
             let const_value = bchunk.get_const(const_idx).unwrap();
-            if self.debug_trace {
-                println!("Pushed const: {}", const_value.borrow());
-            }
+            debug!("Pushed const: {}", const_value.borrow());
             const_value.clone()
         };
         self.push_stored_value(cloned_value);
@@ -232,6 +231,7 @@ impl<'ns> VirtualMachine<'ns> {
 
     fn op_print(&mut self) -> VoidResult {
         let value = self.pop_or_err()?;
+        debug!("Popped value: {value:?}");
         println!("{}", value.borrow());
         Ok(())
     }
