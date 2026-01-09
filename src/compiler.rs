@@ -687,6 +687,10 @@ impl<'scanner> Compiler<'scanner> {
         Ok(())
     }
 
+    fn call(&mut self, can_assign: bool) -> VoidResult {
+        Ok(())
+    }
+
     fn expression(&mut self) -> VoidResult {
         debug!("Called expression(), {}", self.debug_string());
         self.parse_precedence(Precedence::Assignment)
@@ -915,8 +919,8 @@ impl<'scanner> Compiler<'scanner> {
             /* TOKEN_LEFT_PAREN */
             ParseRule {
                 prefix: Some(Compiler::grouping),
-                infix: None,
-                precedence: NONE,
+                infix: Some(Compiler::call),
+                precedence: Call,
             },
             /* TOKEN_RIGHT_PAREN */
             ParseRule {

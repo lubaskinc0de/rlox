@@ -31,34 +31,39 @@ pub enum OpCodeKind {
     Loop { offset: usize },
 }
 
-impl Display for OpCodeKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (name, args) = match self {
-            OpCodeKind::Const { const_idx } => ("OP_CONST", format!("{const_idx}")),
+impl OpCodeKind {
+    fn split_name_args(&self) -> (&str, String) {
+        match self {
+            OpCodeKind::Const { const_idx } => ("OP_CONST", const_idx.to_string()),
             OpCodeKind::Negate => ("OP_NEGATE", "".to_string()),
             OpCodeKind::Add => ("OP_ADD", "".to_string()),
             OpCodeKind::Sub => ("OP_SUB", "".to_string()),
             OpCodeKind::Mul => ("OP_MUL", "".to_string()),
             OpCodeKind::Div => ("OP_DIV", "".to_string()),
             OpCodeKind::Null => ("OP_NULL", "".to_string()),
-            OpCodeKind::False => ("OP_FALSE", "".to_string()),
             OpCodeKind::True => ("OP_TRUE", "".to_string()),
+            OpCodeKind::False => ("OP_FALSE", "".to_string()),
             OpCodeKind::Not => ("OP_NOT", "".to_string()),
             OpCodeKind::Eq => ("OP_EQ", "".to_string()),
             OpCodeKind::Gt => ("OP_GT", "".to_string()),
             OpCodeKind::Lt => ("OP_LT", "".to_string()),
             OpCodeKind::Print => ("OP_PRINT", "".to_string()),
             OpCodeKind::Pop => ("OP_POP", "".to_string()),
-            OpCodeKind::DefineGlobal { name_idx } => ("OP_DEFINE_GLOBAL", format!("{name_idx}")),
-            OpCodeKind::ReadGlobal { name_idx } => ("OP_READ_GLOBAL", format!("{name_idx}")),
-            OpCodeKind::SetGlobal { name_idx } => ("OP_SET_GLOBAL", format!("{name_idx}")),
-            OpCodeKind::ReadLocal { name_idx } => ("OP_READ_LOCAL", format!("{name_idx}")),
-            OpCodeKind::SetLocal { name_idx } => ("OP_SET_LOCAL", format!("{name_idx}")),
-            OpCodeKind::JumpIfFalse { offset } => ("OP_JUMP_IF_FALSE", format!("{offset}")),
-            OpCodeKind::Jump { offset } => ("OP_JUMP", format!("{offset}")),
-            OpCodeKind::Loop { offset } => ("OP_LOOP", format!("{offset}")),
-        };
+            OpCodeKind::DefineGlobal { name_idx } => ("OP_DEFINE_GLOBAL", name_idx.to_string()),
+            OpCodeKind::ReadGlobal { name_idx } => ("OP_READ_GLOBAL", name_idx.to_string()),
+            OpCodeKind::SetGlobal { name_idx } => ("OP_SET_GLOBAL", name_idx.to_string()),
+            OpCodeKind::ReadLocal { name_idx } => ("OP_READ_LOCAL", name_idx.to_string()),
+            OpCodeKind::SetLocal { name_idx } => ("OP_SET_LOCAL", name_idx.to_string()),
+            OpCodeKind::JumpIfFalse { offset } => ("OP_JUMP_IF_FALSE", offset.to_string()),
+            OpCodeKind::Jump { offset } => ("OP_JUMP", offset.to_string()),
+            OpCodeKind::Loop { offset } => ("OP_LOOP", offset.to_string()),
+        }
+    }
+}
 
+impl Display for OpCodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (name, args) = self.split_name_args();
         write!(f, "{name:<12} {args:<6}")
     }
 }
@@ -67,12 +72,6 @@ impl Display for OpCodeKind {
 pub struct OpCode {
     kind: OpCodeKind,
     line: usize,
-}
-
-impl Display for OpCode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} L{}", self.kind, self.line())
-    }
 }
 
 impl OpCode {
@@ -131,17 +130,36 @@ impl Chunk {
     }
 }
 
+// Disassembler
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut iter = self.code.iter().peekable();
-        let mut offset = 0;
-        while let Some(op_code) = iter.next() {
-            write!(f, "{offset}   {op_code}")?;
-            if iter.peek().is_some() {
-                writeln!(f)?;
-                offset += 1;
-            }
+        let max_name_width = self
+            .code
+            .iter()
+            .map(|op| op.kind.split_name_args().0.len())
+            .max()
+            .unwrap_or(0)
+            * 2;
+
+        let max_args_width = self
+            .code
+            .iter()
+            .map(|op| op.kind.split_name_args().1.len())
+            .max()
+            .unwrap_or(0)
+            * 2;
+
+        for (offset, op_code) in self.code.iter().enumerate() {
+            let (name, args) = op_code.kind.split_name_args();
+            writeln!(
+                f,
+                "{offset:<4} {name:<width_name$} {args:<width_args$} L{}",
+                op_code.line,
+                width_name = max_name_width,
+                width_args = max_args_width
+            )?;
         }
+
         Ok(())
     }
 }
