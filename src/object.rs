@@ -9,8 +9,8 @@ use crate::{
     value::Compare,
 };
 
-pub mod string;
 pub mod function;
+pub mod string;
 
 pub type ResultRE<T> = Result<T, RuntimeErrorKind>; // result runtime error
 
@@ -31,7 +31,11 @@ pub trait Object: Debug + Display + Any {
 
     fn operation_not_supported(&self, other: &AnyObject, op: String) -> RuntimeErrorKind {
         RuntimeErrorKind::OperationNotSupported {
-            target: format!("between {} and {}", self.type_name(), other.borrow().type_name()),
+            target: format!(
+                "between {} and {}",
+                self.type_name(),
+                other.borrow().type_name()
+            ),
             op,
         }
     }
