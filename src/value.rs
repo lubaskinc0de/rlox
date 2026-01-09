@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{alias::DynObject, object::ResultRE, token::Literal};
+use crate::{alias::AnyObject, object::ResultRE, token::Literal};
 
 #[derive(Debug)]
 pub enum Value {
@@ -8,7 +8,7 @@ pub enum Value {
     Boolean(bool),
     Null,
     Identifier(Literal),
-    Object(DynObject),
+    Object(AnyObject),
 }
 
 #[derive(PartialEq, Debug)]
@@ -25,7 +25,7 @@ impl Value {
             Value::Float(_) => "float".to_owned(),
             Value::Boolean(_) => "boolean".to_owned(),
             Value::Null => "null".to_owned(),
-            Value::Object(obj) => obj.type_name(),
+            Value::Object(obj) => obj.borrow().type_name(),
             Value::Identifier(_) => "identifier".to_owned(),
         }
     }
@@ -57,7 +57,7 @@ impl Value {
                 }
             }
             (Value::Null, Value::Null) => Ok(Compare::Equal),
-            (Value::Object(a), Value::Object(b)) => a.cmp(b),
+            (Value::Object(a), Value::Object(b)) => a.borrow().cmp(b),
             _ => Ok(Compare::NotEqual),
         }
     }
@@ -69,7 +69,7 @@ impl Display for Value {
             Value::Float(value) => format!("{value}"),
             Value::Boolean(value) => format!("{value}"),
             Value::Null => "null".to_owned(),
-            Value::Object(obj) => format!("{obj}"),
+            Value::Object(obj) => format!("{}", obj.borrow()),
             Value::Identifier(val) => format!("<value '{val}' of type identifier>"),
         };
         write!(f, "{repr}")
@@ -82,15 +82,14 @@ impl Clone for Value {
             Value::Float(val) => Value::Float(*val),
             Value::Boolean(val) => Value::Boolean(*val),
             Value::Null => Value::Null,
-            Value::Object(object) => Value::Object(object.copy()),
+            Value::Object(object) => Value::Object(object.borrow().copy()),
             Value::Identifier(val) => Value::Identifier(val.clone()),
         }
     }
 }
 
 impl Drop for Value {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 impl PartialEq for Value {
@@ -100,7 +99,7 @@ impl PartialEq for Value {
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Null, Value::Null) => true,
             (Value::Object(a), Value::Object(b)) => {
-                a.cmp(b).unwrap_or(Compare::NotEqual) == Compare::Equal
+                a.borrow().cmp(b).unwrap_or(Compare::NotEqual) == Compare::Equal
             }
             _ => false,
         }

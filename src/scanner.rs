@@ -1,40 +1,46 @@
+use lazy_static::lazy_static;
 use std::{collections::HashMap, rc::Rc};
 
 use crate::token::{Token, TokenType};
 
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, TokenType> = {
+        let mut m = HashMap::new();
+        m.insert("and", TokenType::AND);
+        m.insert("class", TokenType::CLASS);
+        m.insert("else", TokenType::ELSE);
+        m.insert("false", TokenType::FALSE);
+        m.insert("for", TokenType::FOR);
+        m.insert("fn", TokenType::FUN);
+        m.insert("if", TokenType::IF);
+        m.insert("null", TokenType::NIL);
+        m.insert("or", TokenType::OR);
+        m.insert("print", TokenType::PRINT);
+        m.insert("return", TokenType::RETURN);
+        m.insert("super", TokenType::SUPER);
+        m.insert("this", TokenType::THIS);
+        m.insert("true", TokenType::TRUE);
+        m.insert("var", TokenType::VAR);
+        m.insert("while", TokenType::WHILE);
+        m
+    };
+}
+
+#[derive(Clone)]
 pub struct Scanner {
-    source: String,
+    source: Rc<Vec<char>>,
     start: usize,
     current: usize,
     line: usize,
-    keywords: HashMap<String, TokenType>,
 }
 
 impl Scanner {
-    pub fn new(source: String) -> Self {
+    pub fn new(source: Rc<String>) -> Self {
         Self {
-            source,
+            source: Rc::new(source.chars().collect()),
             start: 0,
             current: 0,
             line: 1,
-            keywords: HashMap::from([
-                (String::from("and"), TokenType::AND),
-                (String::from("class"), TokenType::CLASS),
-                (String::from("else"), TokenType::ELSE),
-                (String::from("false"), TokenType::FALSE),
-                (String::from("for"), TokenType::FOR),
-                (String::from("fn"), TokenType::FUN),
-                (String::from("if"), TokenType::IF),
-                (String::from("null"), TokenType::NIL),
-                (String::from("or"), TokenType::OR),
-                (String::from("print"), TokenType::PRINT),
-                (String::from("return"), TokenType::RETURN),
-                (String::from("super"), TokenType::SUPER),
-                (String::from("this"), TokenType::THIS),
-                (String::from("true"), TokenType::TRUE),
-                (String::from("var"), TokenType::VAR),
-                (String::from("while"), TokenType::WHILE),
-            ]),
         }
     }
 
@@ -138,10 +144,7 @@ impl Scanner {
     }
 
     fn char_at(&self, index: usize) -> char {
-        self.source
-            .chars()
-            .nth(index)
-            .expect("char index out of range")
+        self.source[index]
     }
 
     fn advance(&mut self) -> char {
@@ -170,20 +173,15 @@ impl Scanner {
     }
 
     fn peek_next(&self) -> char {
-        if self.current + 1 >= self.source.chars().count() {
-            '\0'
-        } else {
-            self.char_at(self.current + 1)
-        }
+        self.source.get(self.current + 1).copied().unwrap_or('\0')
     }
 
     fn is_at_end(&self) -> bool {
-        self.current >= self.source.chars().count()
+        self.current >= self.source.len()
     }
 
     pub fn substr(&self, start: usize, end: usize) -> String {
-        let collected: String = self.source.chars().skip(start).take(end - start).collect();
-        collected
+        self.source[start..end].iter().collect()
     }
 
     fn is_digit(&self, c: char) -> bool {
@@ -271,9 +269,10 @@ impl Scanner {
 
     fn identifier_type(&self) -> TokenType {
         let identifier_value = self.substr(self.start, self.current);
-        let Some(token_type) = self.keywords.get(&identifier_value) else {
-            return TokenType::IDENTIFIER;
-        };
-        *token_type
+        if let Some(token_type) = KEYWORDS.get(identifier_value.as_str()) {
+            *token_type
+        } else {
+            TokenType::IDENTIFIER
+        }
     }
 }

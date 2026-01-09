@@ -6,23 +6,42 @@ macro_rules! rc_refcell {
     };
 }
 
-/// Casts object to concrete type, do not forget to check object type before cast otherwise you will get panic
+/// Casts object to concrete type
 #[macro_export]
 macro_rules! cast {
     ($obj:expr => $type:ty) => {{
-        ($obj.as_ref() as &dyn std::any::Any)
-            .downcast_ref::<$type>()
-            .ok_or_else(|| RuntimeErrorKind::TypeError {
+        if !isinstance!($obj, $type) {
+            let borrowed = $obj.borrow();
+            Err(RuntimeErrorKind::TypeError {
                 expected: stringify!($type).to_string(),
-                provided: $obj.type_name(),
+                provided: borrowed.type_name(),
             })
+        } else {
+            Ok(std::cell::Ref::map($obj.borrow(), |obj| {
+                (obj as &dyn std::any::Any).downcast_ref::<$type>().unwrap()
+            }))
+        }
     }};
 }
 
 // Checks that object is an instance of type
 #[macro_export]
 macro_rules! isinstance {
-    ($obj:expr, $type:ty) => {
-        ($obj.as_ref() as &dyn Any).is::<$type>()
-    };
+    ($obj:expr, $type:ty) => {{
+        let borrowed = $obj.borrow();
+        (&*borrowed as &dyn std::any::Any).is::<$type>()
+    }};
+}
+
+#[macro_export]
+macro_rules! calc {
+    ($a:expr, $b:expr, $op:expr) => {{
+        match $op {
+            "+" => $a + $b,
+            "-" => $a - $b,
+            "*" => $a * $b,
+            "/" => $a / $b,
+            _ => panic!("Unsupported operator: {}", $op),
+        }
+    }};
 }

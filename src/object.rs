@@ -4,12 +4,13 @@ use std::{
 };
 
 use crate::{
-    alias::{DynObject, StoredValue},
+    alias::{AnyObject, StoredValue},
     errors::RuntimeErrorKind,
     value::Compare,
 };
 
 pub mod string;
+pub mod function;
 
 pub type ResultRE<T> = Result<T, RuntimeErrorKind>; // result runtime error
 
@@ -21,21 +22,21 @@ pub trait Object: Debug + Display + Any {
         None
     }
 
-    fn copy(&self) -> DynObject;
+    fn copy(&self) -> AnyObject;
 
     #[allow(unused_variables)]
-    fn cmp(&self, other: &DynObject) -> ResultRE<Compare> {
+    fn cmp(&self, other: &AnyObject) -> ResultRE<Compare> {
         Ok(Compare::NotEqual)
     }
 
-    fn operation_not_supported(&self, other: &DynObject, op: String) -> RuntimeErrorKind {
+    fn operation_not_supported(&self, other: &AnyObject, op: String) -> RuntimeErrorKind {
         RuntimeErrorKind::OperationNotSupported {
-            target: format!("between {} and {}", self.type_name(), other.type_name()),
+            target: format!("between {} and {}", self.type_name(), other.borrow().type_name()),
             op,
         }
     }
 
-    fn add(&self, other: &DynObject) -> ResultRE<StoredValue> {
+    fn add(&self, other: &AnyObject) -> ResultRE<StoredValue> {
         Err(self.operation_not_supported(other, "+".to_owned()))
     }
 }

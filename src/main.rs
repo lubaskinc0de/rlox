@@ -13,7 +13,6 @@ mod interpret;
 mod macros;
 mod namespace;
 mod object;
-mod parser;
 mod scanner;
 mod token;
 mod value;
@@ -52,13 +51,10 @@ fn repl() {
 
     let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals);
+    let mut vm = VirtualMachine::new(&mut globals);
 
     debug!("REPL Started");
     loop {
-        chunk.borrow_mut().clear_code();
-        vm.reset_ip();
-
         eprint!("> ");
         let mut prompt = String::new();
         io::stdin()
@@ -67,13 +63,15 @@ fn repl() {
         if let Err(e) = interpret(prompt, chunk.clone(), &mut vm) {
             println!("{e}")
         };
+        chunk.borrow_mut().clear_code();
+        vm.reset_ip();
     }
 }
 
 fn run_source(content: String) -> Result<(), Error> {
     let mut globals = NameSpace::new();
     let chunk = rc_refcell!(Chunk::new());
-    let mut vm = VirtualMachine::new(chunk.clone(), &mut globals);
+    let mut vm = VirtualMachine::new(&mut globals);
     interpret(content, chunk, &mut vm)
 }
 

@@ -2,65 +2,76 @@ use anyhow::Error;
 use log::debug;
 use std::rc::Rc;
 
-use crate::alias::{StoredChunk, StoredValue, VoidResult};
+use crate::alias::{StoredChunk, StoredObject, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeError;
 use crate::errors::RuntimeErrorKind;
 use crate::namespace::NameSpace;
-use crate::rc_refcell;
+use crate::object::function::FunctionObject;
 use crate::value::{Compare, Value};
+use crate::{calc, rc_refcell};
 
 type ValueStack = Vec<StoredValue>;
+const FRAMES_MAX: usize = 64;
 
-pub struct VirtualMachine<'ns> {
-    chunk: StoredChunk,
-    ip: usize, // instruction pointer
+pub struct VirtualMachine<'a> {
     value_stack: ValueStack,
-    globals: &'ns mut NameSpace,
+    globals: &'a mut NameSpace,
+    frame_count: usize,
+    frames: Vec<CallFrame>,
 }
 
-macro_rules! calc {
-    ($a:expr, $b:expr, $op:expr) => {{
-        match $op {
-            "+" => $a + $b,
-            "-" => $a - $b,
-            "*" => $a * $b,
-            "/" => $a / $b,
-            _ => panic!("Unsupported operator: {}", $op),
-        }
-    }};
+pub struct CallFrame {
+    function: StoredObject<FunctionObject>,
+    ip: usize,
+    slot_start: usize,
 }
 
-impl<'ns> VirtualMachine<'ns> {
-    pub fn new(chunk: StoredChunk, globals: &'ns mut NameSpace) -> Self {
+impl CallFrame {
+    pub fn new(function: StoredObject<FunctionObject>, ip: usize, slot_start: usize) -> Self {
         Self {
-            chunk,
-            ip: 0,
+            function,
+            ip,
+            slot_start,
+        }
+    }
+}
+
+impl<'a> VirtualMachine<'a> {
+    pub fn new(globals: &'a mut NameSpace) -> Self {
+        Self {
             value_stack: vec![],
             globals,
+            frames: Vec::with_capacity(FRAMES_MAX),
+            frame_count: 0,
         }
     }
 
     pub fn reset_ip(&mut self) {
-        self.ip = 0;
+        self.frames[0].ip = 0;
     }
 
     pub fn exec(&mut self) -> VoidResult {
         debug!("Executing chunk:");
-        debug!("\n{}", self.chunk.borrow());
-        debug!("Chunk constants: {:?}", self.chunk.borrow().constants);
+        debug!("\n{}", self.current_chunk().borrow());
+        debug!(
+            "Chunk constants: {:?}",
+            self.current_chunk().borrow().constants
+        );
 
         loop {
             let kind = {
-                let bchunk = self.chunk.borrow();
-                let Some(instruction) = bchunk.get(self.ip) else {
+                let current_chunk = self.current_chunk();
+                let bchunk = current_chunk.borrow();
+                let Some(instruction) = bchunk.get(*self.ip()) else {
                     return Ok(());
                 };
                 instruction.kind().clone()
             };
 
             debug!("Executing opcode: {kind}");
+            debug!("Value stack: {:?}", self.value_stack);
 
             match kind {
                 OpCodeKind::Const { const_idx } => {
@@ -102,17 +113,56 @@ impl<'ns> VirtualMachine<'ns> {
             }
 
             if !matches!(kind, OpCodeKind::Loop { .. }) {
-                self.ip += 1;
+                self.increment_ip();
             }
         }
     }
 
+    pub fn add_frame(&mut self, frame: CallFrame) {
+        debug!("Added frame\n{}", frame.function.borrow().chunk.borrow());
+        self.frames.push(frame);
+        self.frame_count = 1;
+    }
+
+    fn current_frame(&self) -> &CallFrame {
+        &self.frames[self.frame_count - 1]
+    }
+
+    fn current_frame_mut(&mut self) -> &mut CallFrame {
+        &mut self.frames[self.frame_count - 1]
+    }
+
+    fn current_chunk(&self) -> StoredChunk {
+        self.current_frame().function.borrow().chunk.clone()
+    }
+
+    fn ip(&self) -> &usize {
+        &self.current_frame().ip
+    }
+
+    fn add_ip(&mut self, offset: usize) {
+        self.current_frame_mut().ip += offset;
+    }
+
+    fn sub_ip(&mut self, offset: usize) {
+        self.frames[0].ip -= offset;
+    }
+
+    fn increment_ip(&mut self) {
+        self.add_ip(1);
+    }
+
+    fn stack_index(&self, name_idx: usize) -> usize {
+        self.current_frame().slot_start + name_idx
+    }
+
     fn runtime_error(&mut self, kind: RuntimeErrorKind) -> Error {
-        if self.ip == 0 {
+        if self.ip() == &0 {
             return RuntimeError { kind, line: 0 }.into();
         };
-        let bchunk = self.chunk.borrow();
-        let Some(prev_instruction) = bchunk.get(self.ip - 1) else {
+        let current_chunk = self.current_chunk();
+        let bchunk = current_chunk.borrow();
+        let Some(prev_instruction) = bchunk.get(self.ip() - 1) else {
             panic!("Cannot get previous instruction");
         };
 
@@ -134,7 +184,7 @@ impl<'ns> VirtualMachine<'ns> {
         self.value_stack.push(rc_refcell!(value));
     }
 
-    fn push_stored_value(&mut self, value: StoredValue) {
+    pub fn push_stored_value(&mut self, value: StoredValue) {
         self.value_stack.push(value);
     }
 
@@ -162,7 +212,7 @@ impl<'ns> VirtualMachine<'ns> {
                 self.push_value(Value::Float(calculated));
             }
             (Value::Object(a), Value::Object(b)) => {
-                let result = self.as_vm_result(a.add(b))?;
+                let result = self.as_vm_result(a.borrow().add(b))?;
                 self.push_stored_value(result);
             }
             (val1, val2) => {
@@ -177,7 +227,8 @@ impl<'ns> VirtualMachine<'ns> {
     }
 
     fn read_identifier_const(&self, idx: usize) -> Rc<String> {
-        let bchunk = self.chunk.borrow();
+        let current_chunk = self.current_chunk();
+        let bchunk = current_chunk.borrow();
         let const_value = bchunk.get_const(idx).unwrap();
 
         match &*const_value.borrow() {
@@ -188,8 +239,11 @@ impl<'ns> VirtualMachine<'ns> {
 
     fn op_const(&mut self, const_idx: usize) {
         let cloned_value = {
-            let bchunk = self.chunk.borrow();
-            let const_value = bchunk.get_const(const_idx).unwrap();
+            let current_chunk = self.current_chunk();
+            let bchunk = current_chunk.borrow();
+            let const_value = bchunk
+                .get_const(const_idx)
+                .unwrap_or_else(|| panic!("Missing value with index {const_idx} in chunk!"));
             debug!("Pushed const: {}", const_value.borrow());
             const_value.clone()
         };
@@ -276,7 +330,7 @@ impl<'ns> VirtualMachine<'ns> {
     }
 
     fn op_read_local(&mut self, name_idx: usize) -> VoidResult {
-        let Some(value) = self.value_stack.get(name_idx) else {
+        let Some(value) = self.value_stack.get(self.stack_index(name_idx)) else {
             panic!("Missing stack value in read local!");
         };
         let cloned_value = value.clone();
@@ -285,22 +339,23 @@ impl<'ns> VirtualMachine<'ns> {
     }
 
     fn op_set_local(&mut self, name_idx: usize) -> VoidResult {
-        self.value_stack[name_idx] = self.peek()?;
+        let idx = self.stack_index(name_idx);
+        self.value_stack[idx] = self.peek()?;
         Ok(())
     }
 
     fn op_jump_if_false(&mut self, offset: usize) -> VoidResult {
         if !self.peek()?.borrow().as_bool() {
-            self.ip += offset;
+            self.add_ip(offset);
         }
         Ok(())
     }
 
     fn op_jump(&mut self, offset: usize) {
-        self.ip += offset;
+        self.add_ip(offset);
     }
 
     fn op_loop(&mut self, offset: usize) {
-        self.ip -= offset;
+        self.sub_ip(offset);
     }
 }
