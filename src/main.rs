@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use log::debug;
 use std::{
     fs::File,
