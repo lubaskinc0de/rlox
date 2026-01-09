@@ -15,6 +15,8 @@ pub mod string;
 pub type ResultRE<T> = Result<T, RuntimeErrorKind>; // result runtime error
 
 pub trait Object: Debug + Display + Any {
+    fn as_any(&self) -> &dyn Any;
+
     fn type_name(&self) -> String;
 
     #[allow(unused_variables, dead_code)]
@@ -43,4 +45,5 @@ pub trait Object: Debug + Display + Any {
     fn add(&self, other: &AnyObject) -> ResultRE<StoredValue> {
         Err(self.operation_not_supported(other, "+".to_owned()))
     }
+    
 }

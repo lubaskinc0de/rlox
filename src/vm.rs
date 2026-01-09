@@ -2,7 +2,7 @@ use anyhow::Error;
 use log::debug;
 use std::rc::Rc;
 
-use crate::alias::{StoredChunk, StoredObject, StoredValue, VoidResult};
+use crate::alias::{StoredChunk, StoredValue, VoidResult};
 use crate::bin_op::BinOpKind;
 use crate::chunk::OpCodeKind;
 use crate::errors::RuntimeError;
@@ -10,7 +10,7 @@ use crate::errors::RuntimeErrorKind;
 use crate::namespace::NameSpace;
 use crate::object::function::FunctionObject;
 use crate::value::{Compare, Value};
-use crate::{calc, rc_refcell};
+use crate::{calc, cast, isinstance, rc_refcell};
 
 type ValueStack = Vec<StoredValue>;
 const FRAMES_MAX: usize = 64;
@@ -23,13 +23,13 @@ pub struct VirtualMachine<'a> {
 }
 
 pub struct CallFrame {
-    function: StoredObject<FunctionObject>,
+    function: crate::alias::AnyObject, // вместо StoredObject<FunctionObject>
     ip: usize,
     slot_start: usize,
 }
 
 impl CallFrame {
-    pub fn new(function: StoredObject<FunctionObject>, ip: usize, slot_start: usize) -> Self {
+    pub fn new(function: crate::alias::AnyObject, ip: usize, slot_start: usize) -> Self {
         Self {
             function,
             ip,
@@ -55,15 +55,12 @@ impl<'a> VirtualMachine<'a> {
     pub fn exec(&mut self) -> VoidResult {
         debug!("Executing chunk:");
         debug!("\n{}", self.current_chunk().borrow());
-        debug!(
-            "Chunk constants: {:?}",
-            self.current_chunk().borrow().constants
-        );
 
         loop {
             let kind = {
                 let current_chunk = self.current_chunk();
                 let bchunk = current_chunk.borrow();
+                debug!("Instruction pointer: {}", *self.ip());
                 let Some(instruction) = bchunk.get(*self.ip()) else {
                     return Ok(());
                 };
@@ -71,8 +68,6 @@ impl<'a> VirtualMachine<'a> {
             };
 
             debug!("Executing opcode: {kind}");
-            debug!("Value stack: {:?}", self.value_stack);
-
             match kind {
                 OpCodeKind::Const { const_idx } => {
                     self.op_const(const_idx);
@@ -110,6 +105,8 @@ impl<'a> VirtualMachine<'a> {
                 OpCodeKind::JumpIfFalse { offset } => self.op_jump_if_false(offset)?,
                 OpCodeKind::Jump { offset } => self.op_jump(offset),
                 OpCodeKind::Loop { offset } => self.op_loop(offset),
+                OpCodeKind::Call { arg_count } => self.op_call(arg_count)?,
+                OpCodeKind::Return => self.op_return()?,
             }
 
             if !matches!(kind, OpCodeKind::Loop { .. }) {
@@ -118,22 +115,37 @@ impl<'a> VirtualMachine<'a> {
         }
     }
 
-    pub fn add_frame(&mut self, frame: CallFrame) {
-        debug!("Added frame\n{}", frame.function.borrow().chunk.borrow());
-        self.frames.push(frame);
-        self.frame_count = 1;
+    fn current_chunk(&self) -> StoredChunk {
+        let borrowed = self.current_frame().function.borrow();
+        let func = borrowed
+            .as_any()
+            .downcast_ref::<FunctionObject>()
+            .expect("Expected FunctionObject in CallFrame");
+        func.chunk.clone()
+    }
+
+    pub fn add_frame(&mut self, frame: CallFrame) -> VoidResult {
+        if self.frame_count >= FRAMES_MAX {
+            Err(self.runtime_error(RuntimeErrorKind::StackOverflow))
+        } else {
+            self.frames.push(frame);
+            self.frame_count += 1;
+            Ok(())
+        }
+    }
+
+    fn pop_frame(&mut self) {
+        self.frame_count -= 1;
+        self.frames.pop();
     }
 
     fn current_frame(&self) -> &CallFrame {
+        debug!("Current frame {}", self.frame_count - 1);
         &self.frames[self.frame_count - 1]
     }
 
     fn current_frame_mut(&mut self) -> &mut CallFrame {
         &mut self.frames[self.frame_count - 1]
-    }
-
-    fn current_chunk(&self) -> StoredChunk {
-        self.current_frame().function.borrow().chunk.clone()
     }
 
     fn ip(&self) -> &usize {
@@ -158,17 +170,44 @@ impl<'a> VirtualMachine<'a> {
 
     fn runtime_error(&mut self, kind: RuntimeErrorKind) -> Error {
         if self.ip() == &0 {
-            return RuntimeError { kind, line: 0 }.into();
+            return RuntimeError {
+                kind,
+                line: 0,
+                traceback: String::from(""),
+            }
+            .into();
         };
         let current_chunk = self.current_chunk();
         let bchunk = current_chunk.borrow();
         let Some(prev_instruction) = bchunk.get(self.ip() - 1) else {
             panic!("Cannot get previous instruction");
         };
+        let traceback = self
+            .frames
+            .iter()
+            .rev()
+            .fold(String::from(""), |mut tb, frame| {
+                let func_bwed = frame.function.borrow();
+                let func = func_bwed
+                    .as_any()
+                    .downcast_ref::<FunctionObject>()
+                    .expect("Expected FunctionObject in CallFrame");
+                let chunk_bwed = func.chunk.borrow();
+                let instruction = chunk_bwed.get(*self.ip() - 1).expect("Expected OpCode");
+
+                tb.push_str(&format!("[line {}] in ", instruction.line()));
+                if func.name == String::from("").into() {
+                    tb.push_str("<main>");
+                } else {
+                    tb.push_str(&format!("{}()\n", func.name));
+                }
+                tb
+            });
 
         RuntimeError {
             kind,
             line: prev_instruction.line(),
+            traceback,
         }
         .into()
     }
@@ -178,6 +217,11 @@ impl<'a> VirtualMachine<'a> {
             panic!("Missing stack value in peek()!");
         };
         Ok(value)
+    }
+
+    fn peek_distance(&self, distance: usize) -> StoredValue {
+        let idx = self.value_stack.len() - 1 - distance;
+        self.value_stack[idx].clone()
     }
 
     fn push_value(&mut self, value: Value) {
@@ -357,5 +401,49 @@ impl<'a> VirtualMachine<'a> {
 
     fn op_loop(&mut self, offset: usize) {
         self.sub_ip(offset);
+    }
+
+    fn op_call(&mut self, arg_count: usize) -> VoidResult {
+        self.call_value(self.peek_distance(arg_count), arg_count)
+    }
+
+    fn call_value(&mut self, calee: StoredValue, arg_count: usize) -> VoidResult {
+        if let Value::Object(obj) = &*calee.borrow() {
+            let func = cast!(obj => FunctionObject)?;
+            if arg_count != func.arity {
+                Err(self.runtime_error(RuntimeErrorKind::CallError {
+                    func: func.name.to_string(),
+                    arg_count,
+                    arity: func.arity,
+                }))
+            } else {
+                debug!("Adding new frame");
+                debug!("\n{}", func.chunk.borrow());
+
+                self.add_frame(CallFrame::new(
+                    obj.clone(),
+                    0,
+                    self.value_stack.len() - arg_count - 1,
+                ))?;
+                Ok(())
+            }
+        } else {
+            Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
+                target: calee.borrow().type_name(),
+                op: "()".to_string(),
+            }))
+        }
+    }
+
+    fn op_return(&mut self) -> VoidResult {
+        let result = self.pop_or_err()?;
+        self.pop_frame();
+
+        if self.frame_count == 0 {
+            self.pop_or_err()?;
+        } else {
+            self.push_stored_value(result);
+        };
+        Ok(())
     }
 }

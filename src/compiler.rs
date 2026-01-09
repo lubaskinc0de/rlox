@@ -107,7 +107,6 @@ pub struct Compiler<'scanner> {
     scanner: &'scanner mut Scanner,
     current: Option<Rc<Token>>,
     previous: Option<Rc<Token>>,
-    scope_depth: usize,
     states: Vec<CompilerState>,
     rules: Rules<'scanner>,
 }
@@ -118,10 +117,9 @@ impl<'scanner> Compiler<'scanner> {
             scanner,
             current: None,
             previous: None,
-            scope_depth: 0,
             states: vec![CompilerState::with_chunk(
                 FunctionType::Script,
-                Rc::new("<script>".to_owned()),
+                Rc::new("".to_owned()),
                 chunk,
             )],
             rules: Compiler::build_rules(),
@@ -293,6 +291,8 @@ impl<'scanner> Compiler<'scanner> {
             self.for_statement()
         } else if self.matches(&TokenType::FUN)? {
             self.func_decl()
+        } else if self.matches(&TokenType::RETURN)? {
+            self.return_stmt()
         } else {
             self.expr_statement()
         }
@@ -307,7 +307,7 @@ impl<'scanner> Compiler<'scanner> {
     }
 
     fn begin_scope(&mut self) {
-        self.scope_depth += 1;
+        self.state_mut().scope_depth += 1;
     }
 
     fn local_count(&self) -> usize {
@@ -315,8 +315,9 @@ impl<'scanner> Compiler<'scanner> {
     }
 
     fn end_scope(&mut self) {
-        self.scope_depth -= 1;
-        while self.local_count() > 0 && self.last_local().unwrap().depth > self.scope_depth {
+        self.state_mut().scope_depth -= 1;
+        while self.local_count() > 0 && self.last_local().unwrap().depth > self.state().scope_depth
+        {
             // removing locals of exited scope
             self.emit_op_code(OpCodeKind::Pop);
             self.locals_mut().pop();
@@ -324,11 +325,11 @@ impl<'scanner> Compiler<'scanner> {
     }
 
     fn is_local_scope(&self) -> bool {
-        self.scope_depth > 0
+        self.state().scope_depth > 0
     }
 
     fn is_global_scope(&self) -> bool {
-        self.scope_depth == 0
+        self.state().scope_depth == 0
     }
 
     fn block(&mut self) -> VoidResult {
@@ -407,7 +408,7 @@ impl<'scanner> Compiler<'scanner> {
 
     fn add_local(&mut self, name: Rc<Token>) {
         debug!("Pushing {name} local");
-        let local = Local::new(name, self.scope_depth, false);
+        let local = Local::new(name, self.state().scope_depth, false);
         self.locals_mut().push(local);
     }
 
@@ -687,8 +688,28 @@ impl<'scanner> Compiler<'scanner> {
         Ok(())
     }
 
-    fn call(&mut self, can_assign: bool) -> VoidResult {
+    fn call(&mut self, _can_assign: bool) -> VoidResult {
+        let arg_count = self.argument_list()?;
+        self.emit_op_code(OpCodeKind::Call { arg_count });
         Ok(())
+    }
+
+    fn argument_list(&mut self) -> Result<usize, Error> {
+        let mut arg_count = 0;
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                self.expression()?;
+                arg_count += 1;
+                if !self.matches(&TokenType::COMMA)? {
+                    break;
+                }
+            }
+        }
+        self.consume(
+            TokenType::RightParen,
+            "Expect ')' after arguments list".to_owned(),
+        )?;
+        Ok(arg_count)
     }
 
     fn expression(&mut self) -> VoidResult {
@@ -721,6 +742,26 @@ impl<'scanner> Compiler<'scanner> {
             TokenType::TRUE => OpCodeKind::True,
             _ => unreachable!(),
         });
+        Ok(())
+    }
+
+    fn return_stmt(&mut self) -> VoidResult {
+        if matches!(self.state().function_type, FunctionType::Script) {
+            return Err(self.error_at_current("Can't return from top-level code.".to_string()));
+        }
+
+        if self.matches(&TokenType::SEMICOLON)? {
+            self.emit_op_code(OpCodeKind::Null);
+            self.emit_op_code(OpCodeKind::Return);
+        } else {
+            self.expression()?;
+            self.consume(
+                TokenType::SEMICOLON,
+                "Expected ';' after return value".to_owned(),
+            )?;
+            self.emit_op_code(OpCodeKind::Return);
+        }
+
         Ok(())
     }
 
