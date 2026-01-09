@@ -11,7 +11,7 @@ lazy_static! {
         m.insert("else", TokenType::ELSE);
         m.insert("false", TokenType::FALSE);
         m.insert("for", TokenType::FOR);
-        m.insert("fn", TokenType::FUN);
+        m.insert("fun", TokenType::FUN);
         m.insert("if", TokenType::IF);
         m.insert("null", TokenType::NIL);
         m.insert("or", TokenType::OR);

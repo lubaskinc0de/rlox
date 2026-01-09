@@ -25,6 +25,9 @@ impl FunctionObject {
             name,
         }
     }
+    pub fn incr_arity(&mut self) {
+        self.arity += 1;
+    }
 }
 
 impl Display for FunctionObject {

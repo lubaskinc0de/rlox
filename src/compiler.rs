@@ -640,13 +640,34 @@ impl<'scanner> Compiler<'scanner> {
     }
 
     fn function(&mut self, function_type: FunctionType) -> VoidResult {
+        debug!("Called function");
+        let function_name = self
+            .previous()
+            .expect("Expected function to be called after func_decl")
+            .literal
+            .clone()
+            .expect("Expected literal");
+
         let compiled_function = self
-            .in_nested(function_type, Rc::new("func".to_owned()), |compiler| {
+            .in_nested(function_type, function_name.clone(), |compiler| {
                 compiler.begin_scope();
                 compiler.consume(
                     TokenType::LeftParen,
                     "Expect '(' after function name.".to_owned(),
                 )?;
+
+                if !compiler.check(&TokenType::RightParen) {
+                    loop {
+                        compiler.func().borrow_mut().incr_arity();
+                        let constant =
+                            compiler.parse_variable_name("Expected parameter name".to_owned())?;
+                        compiler.define_variable(constant);
+
+                        if !compiler.matches(&TokenType::COMMA)? {
+                            break;
+                        }
+                    }
+                }
                 compiler.consume(
                     TokenType::RightParen,
                     "Expect ')' after function parameters.".to_owned(),
@@ -655,12 +676,14 @@ impl<'scanner> Compiler<'scanner> {
                     TokenType::LeftBrace,
                     "Expect '{' before function body.".to_owned(),
                 )?;
-                compiler.block()
+                compiler.block()?;
+                compiler.end_scope();
+                Ok(())
             })?
             .function;
-
+        debug!("Function {function_name} compiled");
         self.emit_const(rc_refcell!(Value::Object(compiled_function)));
-
+        debug!("Function processed");
         Ok(())
     }
 
