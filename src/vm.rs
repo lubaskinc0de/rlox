@@ -23,7 +23,7 @@ pub struct VirtualMachine<'a> {
 }
 
 pub struct CallFrame {
-    function: crate::alias::AnyObject, // вместо StoredObject<FunctionObject>
+    function: crate::alias::AnyObject,
     ip: usize,
     slot_start: usize,
 }
@@ -81,14 +81,14 @@ impl<'a> VirtualMachine<'a> {
                     self.push_value(Value::Null);
                 }
                 OpCodeKind::True => {
-                    self.push_value(Value::Boolean(true));
+                    self.push_value(Value::Bool(true));
                 }
                 OpCodeKind::False => {
-                    self.push_value(Value::Boolean(false));
+                    self.push_value(Value::Bool(false));
                 }
                 OpCodeKind::Not => {
                     let value = self.pop_or_err()?;
-                    self.push_value(Value::Boolean(!value.borrow().as_bool()));
+                    self.push_value(Value::Bool(!value.borrow().as_bool()));
                 }
                 OpCodeKind::Eq => self.op_cmp(Compare::Equal)?,
                 OpCodeKind::Gt => self.op_cmp(Compare::Greater)?,
@@ -251,9 +251,9 @@ impl<'a> VirtualMachine<'a> {
         let a = self.pop_or_err()?;
 
         match (&*a.borrow(), &*b.borrow()) {
-            (Value::Float(a_val), Value::Float(b_val)) => {
+            (Value::Number(a_val), Value::Number(b_val)) => {
                 let calculated = calc!(a_val, b_val, kind.to_string().as_str());
-                self.push_value(Value::Float(calculated));
+                self.push_value(Value::Number(calculated));
             }
             (Value::Object(a), Value::Object(b)) => {
                 let result = self.as_vm_result(a.borrow().add(b))?;
@@ -296,7 +296,7 @@ impl<'a> VirtualMachine<'a> {
 
     fn op_negate(&mut self) -> VoidResult {
         let peek = self.peek()?;
-        if !peek.borrow().support_negation() {
+        if !peek.borrow().is_negation_supported() {
             return Err(self.runtime_error(RuntimeErrorKind::OperationNotSupported {
                 op: "-".to_owned(),
                 target: format!("for {}", peek.borrow()),
@@ -305,8 +305,8 @@ impl<'a> VirtualMachine<'a> {
 
         let value = self.pop_or_err()?;
         match &*value.borrow() {
-            Value::Float(float_value) => {
-                self.push_value(Value::Float(-float_value));
+            Value::Number(float_value) => {
+                self.push_value(Value::Number(-float_value));
             }
             _ => unreachable!(),
         };
@@ -323,7 +323,7 @@ impl<'a> VirtualMachine<'a> {
             return Err(self.runtime_error(cmp_result.unwrap_err()));
         }
         let result = cmp_result.unwrap() == expected;
-        self.push_value(Value::Boolean(result));
+        self.push_value(Value::Bool(result));
         Ok(())
     }
 

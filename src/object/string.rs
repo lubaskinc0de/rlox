@@ -35,10 +35,6 @@ impl Object for StringObject {
         String::from(STRING_TYPE)
     }
 
-    fn copy(&self) -> AnyObject {
-        rc_refcell!(StringObject::new(self.value.clone()))
-    }
-
     fn cmp(&self, other: &AnyObject) -> ResultRE<Compare> {
         if !isinstance!(other, StringObject) {
             return Ok(Compare::NotEqual);

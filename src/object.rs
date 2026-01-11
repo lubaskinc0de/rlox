@@ -24,8 +24,6 @@ pub trait Object: Debug + Display + Any {
         None
     }
 
-    fn copy(&self) -> AnyObject;
-
     #[allow(unused_variables)]
     fn cmp(&self, other: &AnyObject) -> ResultRE<Compare> {
         Ok(Compare::NotEqual)

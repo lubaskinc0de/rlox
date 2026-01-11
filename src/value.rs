@@ -4,43 +4,42 @@ use crate::{alias::AnyObject, object::ResultRE, token::Literal};
 
 #[derive(Debug)]
 pub enum Value {
-    Float(f64),
-    Boolean(bool),
+    Number(f64),
+    Bool(bool),
     Null,
     Identifier(Literal),
     Object(AnyObject),
 }
 
-#[derive(PartialEq, Debug)]
-pub enum Compare {
-    Equal,
-    NotEqual,
-    Greater,
-    Lower,
-}
-
 impl Value {
     pub fn type_name(&self) -> String {
         match self {
-            Value::Float(_) => "float".to_owned(),
-            Value::Boolean(_) => "boolean".to_owned(),
+            Value::Number(_) => "number".to_owned(),
+            Value::Bool(_) => "boolean".to_owned(),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => obj.borrow().type_name(),
             Value::Identifier(_) => "identifier".to_owned(),
         }
     }
 
-    pub fn support_negation(&self) -> bool {
-        matches!(self, Value::Float(_))
+    pub fn is_negation_supported(&self) -> bool {
+        matches!(self, Value::Number(_))
     }
 
     pub fn as_bool(&self) -> bool {
-        !matches!(self, Value::Boolean(false) | Value::Null)
+        !matches!(self, Value::Bool(false) | Value::Null)
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        match &self {
+            Value::Number(num) => *num,
+            _ => panic!("as_f64() called on a non-number value"),
+        }
     }
 
     pub fn cmp(&self, other: &Value) -> ResultRE<Compare> {
         match (&self, other) {
-            (Value::Float(a), Value::Float(b)) => {
+            (Value::Number(a), Value::Number(b)) => {
                 if a > b {
                     Ok(Compare::Greater)
                 } else if a < b {
@@ -49,7 +48,7 @@ impl Value {
                     Ok(Compare::Equal)
                 }
             }
-            (Value::Boolean(a), Value::Boolean(b)) => {
+            (Value::Bool(a), Value::Bool(b)) => {
                 if a == b {
                     Ok(Compare::Equal)
                 } else {
@@ -63,47 +62,35 @@ impl Value {
     }
 }
 
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(f: f64) -> Self {
+        Value::Number(f)
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let repr = match self {
-            Value::Float(value) => format!("{value}"),
-            Value::Boolean(value) => format!("{value}"),
+            Value::Number(value) => format!("{value}"),
+            Value::Bool(value) => format!("{value}"),
             Value::Null => "null".to_owned(),
             Value::Object(obj) => format!("{}", obj.borrow()),
-            Value::Identifier(val) => format!("<value '{val}' of type identifier>"),
+            Value::Identifier(val) => format!("'{val}'"),
         };
         write!(f, "{repr}")
     }
 }
 
-impl Clone for Value {
-    fn clone(&self) -> Self {
-        match self {
-            Value::Float(val) => Value::Float(*val),
-            Value::Boolean(val) => Value::Boolean(*val),
-            Value::Null => Value::Null,
-            Value::Object(object) => Value::Object(object.borrow().copy()),
-            Value::Identifier(val) => Value::Identifier(val.clone()),
-        }
-    }
+#[derive(PartialEq, Debug)]
+pub enum Compare {
+    Equal,
+    NotEqual,
+    Greater,
+    Lower,
 }
-
-impl Drop for Value {
-    fn drop(&mut self) {}
-}
-
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> bool {
-        match (&self, other) {
-            (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Boolean(a), Value::Boolean(b)) => a == b,
-            (Value::Null, Value::Null) => true,
-            (Value::Object(a), Value::Object(b)) => {
-                a.borrow().cmp(b).unwrap_or(Compare::NotEqual) == Compare::Equal
-            }
-            _ => false,
-        }
-    }
-}
-
-impl Eq for Value {}

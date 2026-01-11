@@ -729,7 +729,7 @@ impl<'scanner> Compiler<'scanner> {
 
     #[allow(unused_variables)]
     fn number(&mut self, can_assign: bool) -> VoidResult {
-        let value = Value::Float(
+        let value = Value::Number(
             self.previous()
                 .unwrap()
                 .literal

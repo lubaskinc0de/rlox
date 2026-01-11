@@ -41,14 +41,6 @@ impl Object for FunctionObject {
         String::from(FUNCTION_TYPE)
     }
 
-    fn copy(&self) -> AnyObject {
-        rc_refcell!(FunctionObject {
-            arity: self.arity,
-            chunk: self.chunk.clone(),
-            name: self.name.clone()
-        })
-    }
-
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
