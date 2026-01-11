@@ -22,7 +22,7 @@ pub fn interpret(source: String, chunk: StoredChunk, vm: &mut VirtualMachine) ->
     let script = rc_refcell!(Value::Object(function.clone()));
 
     vm.push_stored_value(script);
-    vm.add_frame(CallFrame::new(function, 0, 1));
+    vm.add_frame(CallFrame::new(function, 0, 1))?;
     vm.exec()?;
 
     Ok(())

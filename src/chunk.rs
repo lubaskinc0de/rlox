@@ -29,6 +29,8 @@ pub enum OpCodeKind {
     JumpIfFalse { offset: usize },
     Jump { offset: usize },
     Loop { offset: usize },
+    Call { arg_count: usize },
+    Return,
 }
 
 impl OpCodeKind {
@@ -57,6 +59,8 @@ impl OpCodeKind {
             OpCodeKind::JumpIfFalse { offset } => ("OP_JUMP_IF_FALSE", offset.to_string()),
             OpCodeKind::Jump { offset } => ("OP_JUMP", offset.to_string()),
             OpCodeKind::Loop { offset } => ("OP_LOOP", offset.to_string()),
+            OpCodeKind::Call { arg_count } => ("OP_CALL", arg_count.to_string()),
+            OpCodeKind::Return => ("OP_RETURN", "".to_string()),
         }
     }
 }

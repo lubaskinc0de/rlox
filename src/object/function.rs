@@ -48,4 +48,8 @@ impl Object for FunctionObject {
             name: self.name.clone()
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }

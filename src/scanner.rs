@@ -113,7 +113,7 @@ impl Scanner {
             '"' => self.string(),
             val if self.is_digit(val) => self.number(),
             val if self.is_alpha(val) => self.identifier(),
-            _ => self.make_error_token("Unexpected character".to_owned()),
+            character => self.make_error_token(format!("Unexpected character: '{character}'")),
         }
     }
 

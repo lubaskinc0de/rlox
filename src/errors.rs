@@ -13,6 +13,16 @@ pub enum RuntimeErrorKind {
 
     #[error("TypeError: expected {expected}, got {provided}")]
     TypeError { expected: String, provided: String },
+
+    #[error("CallError: {func}() expected {arity} arguments but got {arg_count}")]
+    CallError {
+        func: String,
+        arg_count: usize,
+        arity: usize,
+    },
+
+    #[error("Stack overflow")]
+    StackOverflow,
 }
 
 #[derive(Error, Debug)]
@@ -20,8 +30,9 @@ pub enum RuntimeErrorKind {
 pub struct ParsingError {}
 
 #[derive(Debug, Error)]
-#[error("[line {line}] Runtime error:\n{kind}")]
+#[error("[line {line}] Runtime error:\n{kind}\nTraceback (most recent call last):\n{traceback}")]
 pub struct RuntimeError {
     pub kind: RuntimeErrorKind,
     pub line: usize,
+    pub traceback: String,
 }

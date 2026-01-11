@@ -64,4 +64,8 @@ impl Object for StringObject {
             Rc::new(concatenated_string)
         )))))
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
