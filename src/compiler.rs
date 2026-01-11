@@ -609,7 +609,17 @@ impl<'scanner> Compiler<'scanner> {
 
     fn start_nesting(&mut self, function_type: FunctionType, function_name: Literal) {
         self.states
-            .push(CompilerState::new(function_type, function_name));
+            .push(CompilerState::new(function_type, function_name.clone()));
+        let name_token = Rc::new(Token {
+            token_type: TokenType::IDENTIFIER,
+            literal: Some(function_name.clone()),
+            line: 0,
+            start: 0,
+            length: 0,
+            message: None,
+        });
+        self.add_local(name_token);
+        self.last_local().unwrap().mark_initialized();
     }
 
     fn end_nesting(&mut self) -> CompilerState {

@@ -109,7 +109,7 @@ impl<'a> VirtualMachine<'a> {
                 OpCodeKind::Return => self.op_return()?,
             }
 
-            if !matches!(kind, OpCodeKind::Loop { .. }) {
+            if !matches!(kind, OpCodeKind::Loop { .. } | OpCodeKind::Call { .. }) {
                 self.increment_ip();
             }
         }
@@ -157,7 +157,7 @@ impl<'a> VirtualMachine<'a> {
     }
 
     fn sub_ip(&mut self, offset: usize) {
-        self.frames[0].ip -= offset;
+        self.current_frame_mut().ip -= offset;
     }
 
     fn increment_ip(&mut self) {
@@ -193,7 +193,7 @@ impl<'a> VirtualMachine<'a> {
                     .downcast_ref::<FunctionObject>()
                     .expect("Expected FunctionObject in CallFrame");
                 let chunk_bwed = func.chunk.borrow();
-                let instruction = chunk_bwed.get(*self.ip() - 1).expect("Expected OpCode");
+                let instruction = chunk_bwed.get(frame.ip - 1).expect("Expected OpCode");
 
                 tb.push_str(&format!("[line {}] in ", instruction.line()));
                 if func.name == String::from("").into() {
@@ -437,13 +437,14 @@ impl<'a> VirtualMachine<'a> {
 
     fn op_return(&mut self) -> VoidResult {
         let result = self.pop_or_err()?;
+        let frame = self.current_frame().slot_start;
+        self.value_stack.truncate(frame);
         self.pop_frame();
 
-        if self.frame_count == 0 {
-            self.pop_or_err()?;
-        } else {
+        if self.frame_count != 0 {
             self.push_stored_value(result);
-        };
+        }
+
         Ok(())
     }
 }
