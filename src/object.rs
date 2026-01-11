@@ -45,5 +45,4 @@ pub trait Object: Debug + Display + Any {
     fn add(&self, other: &AnyObject) -> ResultRE<StoredValue> {
         Err(self.operation_not_supported(other, "+".to_owned()))
     }
-    
 }
